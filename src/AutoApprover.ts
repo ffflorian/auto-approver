@@ -56,6 +56,7 @@ export class AutoApprover {
         'User-Agent': `${toolName} v${toolVersion}`,
       },
     });
+    this.config.projects.gitHub.forEach(projectSlug => this.checkProject(projectSlug));
   }
 
   approveAllByMatch(match: RegExp): Promise<Array<{approveResults: ApproveResult[]; projectSlug: string}>> {
@@ -94,23 +95,14 @@ export class AutoApprover {
   private async approvePullRequest(projectSlug: string, pullNumber: number): Promise<void> {
     const resourceUrl = `/repos/${projectSlug}/pulls/${pullNumber}/reviews`;
 
-    console.log(
-      'sending',
-      {
-        event: 'APPROVE',
-      },
-      'to',
-      resourceUrl
-    );
-
-    await this.apiClient.post<{id: number}>(resourceUrl, {
+    await this.apiClient.post(resourceUrl, {
       event: 'APPROVE',
     });
   }
 
   private checkProject(projectSlug: string): string | false {
     const gitHubUsernameRegex = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
-    const gitHubProjectRegex = /^[\w-]{0,100}$/i;
+    const gitHubProjectRegex = /^[\w-.]{0,100}$/i;
     const [userName, project] = projectSlug
       .trim()
       .replace(/^\//, '')
