@@ -9,7 +9,7 @@
     "cosmiconfig": "6.0.0",
     "logdown": "3.3.0"
   },
-  "description": "A boilerplate for a modern™ TypeScript project.",
+  "description": "Automatically approve all GitHub PRs which match a specific pattern.",
   "devDependencies": {
     "@ffflorian/prettier-config": "0.0.6",
     "@ffflorian/semantic-release-config": "0.2.0",
