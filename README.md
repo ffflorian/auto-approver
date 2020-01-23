@@ -1,4 +1,4 @@
-# auto-approver [![Build Status](https://action-badges.now.sh/ffflorian/auto-approver)](https://github.com/ffflorian/auto-approver/actions/) [![npm version](https://img.shields.io/npm/v/ffflorian/auto-approver.svg?style=flat)](https://www.npmjs.com/package/ffflorian/auto-approver) [![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=ffflorian/auto-approver)](https://dependabot.com)
+# auto-approver [![Build Status](https://github.com/ffflorian/auto-approver/workflows/Build/badge.svg)](https://github.com/ffflorian/auto-approver/actions/) [![npm version](https://img.shields.io/npm/v/auto-approver.svg?style=flat)](https://www.npmjs.com/package/auto-approver) [![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=ffflorian/auto-approver)](https://dependabot.com)
 
 Automatically approve all GitHub PRs which match a specific pattern.
 
