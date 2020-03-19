@@ -67,8 +67,8 @@ export class AutoApprover {
     return Promise.all(
       validProjects.map(async projectSlug => {
         const pullRequests = await this.getPullRequestsBySlug(projectSlug);
-        const matchedPulls = pullRequests.filter(pullRequest => pullRequest.head.ref.match(match));
-        console.log(
+        const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(match));
+        this.logger.info(
           `Found matching pull requests for "${projectSlug}":`,
           matchedPulls.map(pull => pull.title)
         );

@@ -44,6 +44,10 @@ logger.info('Found the following repositories to check:', configFileData.project
 input.question('ℹ️  auto-approver Which branch would you like to approve? ', answer => {
   new AutoApprover(configFileData)
     .approveAllByMatch(new RegExp(answer))
-    .then(() => process.exit())
+    .then(results => {
+      const approvedProjects = results.filter(result => result.approveResults.length > 0);
+      logger.info(`Approved ${approvedProjects.length} pull requests.`);
+      process.exit();
+    })
     .catch(error => logger.error(error));
 });
