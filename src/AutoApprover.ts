@@ -103,11 +103,7 @@ export class AutoApprover {
   private checkProject(projectSlug: string): string | false {
     const gitHubUsernameRegex = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
     const gitHubProjectRegex = /^[\w-.]{0,100}$/i;
-    const [userName, project] = projectSlug
-      .trim()
-      .replace(/^\//, '')
-      .replace(/\/$/, '')
-      .split('/');
+    const [userName, project] = projectSlug.trim().replace(/^\//, '').replace(/\/$/, '').split('/');
     if (!gitHubUsernameRegex.test(userName) || !gitHubProjectRegex.test(project)) {
       this.logger.warn(`Invalid GitHub project slug "${projectSlug}". Skipping.`);
       return false;
