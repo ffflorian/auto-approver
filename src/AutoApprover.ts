@@ -60,8 +60,9 @@ export class AutoApprover {
   }
 
   approveAllByMatch(match: RegExp): Promise<Array<{approveResults: ApproveResult[]; projectSlug: string}>> {
-    const validProjects =
-      this.config.projects.gitHub.map(projectSlug => this.checkProject(projectSlug)).filter(Boolean) as string[];
+    const validProjects = this.config.projects.gitHub
+      .map(projectSlug => this.checkProject(projectSlug))
+      .filter(Boolean) as string[];
 
     return Promise.all(
       validProjects.map(async projectSlug => {
