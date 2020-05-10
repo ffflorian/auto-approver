@@ -59,7 +59,7 @@ export class AutoApprover {
     this.config.projects.gitHub.forEach(projectSlug => this.checkProject(projectSlug));
   }
 
-  approveAllByMatch(match: RegExp): Promise<Array<{approveResults: ApproveResult[]; projectSlug: string}>> {
+  approveAllByMatch(match: RegExp): Promise<{approveResults: ApproveResult[]; projectSlug: string}[]> {
     const validProjects = this.config.projects.gitHub
       .map(projectSlug => this.checkProject(projectSlug))
       .filter(Boolean) as string[];
@@ -75,7 +75,7 @@ export class AutoApprover {
         const approveResults = await Promise.all(
           matchedPulls.map(async pull => this.approveByPullNumber(projectSlug, pull.number))
         );
-        return {projectSlug, approveResults};
+        return {approveResults, projectSlug};
       })
     );
   }
