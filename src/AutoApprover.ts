@@ -59,7 +59,7 @@ export class AutoApprover {
     this.config.projects.gitHub.forEach(projectSlug => this.checkProject(projectSlug));
   }
 
-  approveAllByMatch(match: RegExp): Promise<{approveResults: ApproveResult[]; projectSlug: string}[]> {
+  approveAllByMatch(match: RegExp): Promise<Array<{approveResults: ApproveResult[]; projectSlug: string}>> {
     const validProjects = this.config.projects.gitHub
       .map(projectSlug => this.checkProject(projectSlug))
       .filter(Boolean) as string[];
