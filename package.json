@@ -4,7 +4,7 @@
     "auto-approver": "dist/cli.js"
   },
   "dependencies": {
-    "axios": "0.19.2",
+    "axios": "0.20.0",
     "commander": "6.0.0",
     "cosmiconfig": "7.0.0",
     "logdown": "3.3.1"
