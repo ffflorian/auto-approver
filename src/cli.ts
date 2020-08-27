@@ -26,6 +26,7 @@ const {bin, description, version} = require(packageJsonPath);
 commander
   .name(Object.keys(bin)[0])
   .description(description)
+  .option('-m, --comment <text>', 'Use a comment instead of an approval')
   .option('-c, --config <path>', 'specify a configuration file (default: .approverrc.json)')
   .version(version)
   .parse(process.argv);
@@ -41,13 +42,25 @@ if (!configResult || configResult.isEmpty) {
 const configFileData = configResult.config as ApproverConfig;
 
 logger.info('Found the following repositories to check:', configFileData.projects.gitHub);
-input.question('ℹ️  auto-approver Which branch would you like to approve? ', answer => {
-  new AutoApprover(configFileData)
-    .approveAllByMatch(new RegExp(answer))
-    .then(results => {
-      const approvedProjects = results.filter(result => result.approveResults.length > 0);
-      logger.info(`Approved ${approvedProjects.length} pull requests.`);
-      process.exit();
-    })
-    .catch(error => logger.error(error));
+input.question('ℹ️  auto-approver Which branch would you like to approve? ', async answer => {
+  const autoApprover = new AutoApprover(configFileData);
+
+  try {
+    if (commander.comment) {
+      await autoApprover.commentAllByMatch(new RegExp(answer), commander.comment).then(results => {
+        const approvedProjects = results.filter(result => result.approveResults.length > 0);
+        logger.info(`Commented "${commander.comment}" on ${approvedProjects.length} pull requests.`);
+        process.exit();
+      });
+    } else {
+      await autoApprover.approveAllByMatch(new RegExp(answer)).then(results => {
+        const approvedProjects = results.filter(result => result.approveResults.length > 0);
+        logger.info(`Approved ${approvedProjects.length} pull requests.`);
+        process.exit();
+      });
+    }
+  } catch (error) {
+    logger.error(error);
+    process.exit(1);
+  }
 });
