@@ -47,18 +47,15 @@ input.question('ℹ️  auto-approver Which branch would you like to approve? ',
 
   try {
     if (commander.comment) {
-      await autoApprover.commentAllByMatch(new RegExp(answer), commander.comment).then(results => {
-        const approvedProjects = results.filter(result => result.approveResults.length > 0);
-        logger.info(`Commented "${commander.comment}" on ${approvedProjects.length} pull requests.`);
-        process.exit();
-      });
+      const results = await autoApprover.commentAllByMatch(new RegExp(answer), commander.comment);
+      const approvedProjects = results.filter(result => result.approveResults.length > 0);
+      logger.info(`Commented "${commander.comment}" on ${approvedProjects.length} pull requests.`);
     } else {
-      await autoApprover.approveAllByMatch(new RegExp(answer)).then(results => {
-        const approvedProjects = results.filter(result => result.approveResults.length > 0);
-        logger.info(`Approved ${approvedProjects.length} pull requests.`);
-        process.exit();
-      });
+      const results = await autoApprover.approveAllByMatch(new RegExp(answer));
+      const approvedProjects = results.filter(result => result.approveResults.length > 0);
+      logger.info(`Approved ${approvedProjects.length} pull requests.`);
     }
+    process.exit();
   } catch (error) {
     logger.error(error);
     process.exit(1);
