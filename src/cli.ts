@@ -26,7 +26,7 @@ const {bin, description, version} = require(packageJsonPath);
 commander
   .name(Object.keys(bin)[0])
   .description(description)
-  .option('-m, --comment <text>', 'Use a comment instead of an approval')
+  .option('-m, --message <text>', 'Use a comment instead of an approval')
   .option('-c, --config <path>', 'specify a configuration file (default: .approverrc.json)')
   .version(version)
   .parse(process.argv);
