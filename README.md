@@ -16,9 +16,10 @@ Usage: auto-approver [options]
 Automatically approve all GitHub PRs which match a specific pattern.
 
 Options:
-  -c, --config <path>  specify a configuration file (default: .approverrc.json)
-  -V, --version        output the version number
-  -h, --help           output usage information
+  -m, --message <text>  comment on PRs instead approving them
+  -c, --config <path>   specify a configuration file (default: .approverrc.json)
+  -V, --version         output the version number
+  -h, --help            display help for command
 ```
 
 ### Configuration file
