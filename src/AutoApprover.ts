@@ -58,7 +58,7 @@ export class AutoApprover {
       logger: console,
       markdown: false,
     });
-    this.logger.state.isEnabled = true; //!!this.config.verbose;
+    this.logger.state.isEnabled = true;
     this.apiClient = axios.create({
       baseURL: 'https://api.github.com',
       headers: {
@@ -66,7 +66,28 @@ export class AutoApprover {
         'User-Agent': `${toolName} v${toolVersion}`,
       },
     });
-    this.config.projects.gitHub.forEach(projectSlug => this.checkProject(projectSlug));
+    this.checkConfig(this.config);
+  }
+
+  private checkConfig(config: ApproverConfig): void {
+    if (!config.projects?.gitHub || config.projects.gitHub.length < 1) {
+      throw new Error('No projects in config file specified');
+    }
+
+    if (!config.authToken) {
+      throw new Error('No authentication token in config file specified');
+    }
+  }
+
+  private checkProject(projectSlug: string): string | false {
+    const gitHubUsernameRegex = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
+    const gitHubProjectRegex = /^[\w-.]{0,100}$/i;
+    const [userName, project] = projectSlug.trim().replace(/^\//, '').replace(/\/$/, '').split('/');
+    if (!gitHubUsernameRegex.test(userName) || !gitHubProjectRegex.test(project)) {
+      this.logger.warn(`Invalid GitHub project slug "${projectSlug}". Skipping.`);
+      return false;
+    }
+    return projectSlug;
   }
 
   async approveAllByMatch(regex: RegExp): Promise<ProjectResult[]> {
@@ -149,17 +170,6 @@ export class AutoApprover {
   private async postComment(projectSlug: string, pullNumber: number, comment: string): Promise<void> {
     const resourceUrl = `/repos/${projectSlug}/issues/${pullNumber}/comments`;
     await this.apiClient.post(resourceUrl, {body: comment});
-  }
-
-  private checkProject(projectSlug: string): string | false {
-    const gitHubUsernameRegex = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
-    const gitHubProjectRegex = /^[\w-.]{0,100}$/i;
-    const [userName, project] = projectSlug.trim().replace(/^\//, '').replace(/\/$/, '').split('/');
-    if (!gitHubUsernameRegex.test(userName) || !gitHubProjectRegex.test(project)) {
-      this.logger.warn(`Invalid GitHub project slug "${projectSlug}". Skipping.`);
-      return false;
-    }
-    return projectSlug;
   }
 
   private async getPullRequestsBySlug(projectSlug: string): Promise<GitHubPullRequest[]> {
