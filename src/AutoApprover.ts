@@ -20,7 +20,7 @@ interface GitHubPullRequest {
   title: string;
 }
 
-export interface ApproveResult {
+export interface ActionResult {
   error?: string;
   pullNumber: number;
   status: 'bad' | 'ok';
@@ -37,6 +37,16 @@ export interface ApproverConfig {
   verbose?: boolean;
 }
 
+export interface Project {
+  projectSlug: string;
+  pullRequests: GitHubPullRequest[];
+}
+
+export interface ProjectResult {
+  actionResults: ActionResult[];
+  projectSlug: string;
+}
+
 export class AutoApprover {
   private readonly apiClient: AxiosInstance;
   private readonly config: ApproverConfig;
@@ -48,7 +58,7 @@ export class AutoApprover {
       logger: console,
       markdown: false,
     });
-    this.logger.state.isEnabled = true; //!!this.config.verbose;
+    this.logger.state.isEnabled = true;
     this.apiClient = axios.create({
       baseURL: 'https://api.github.com',
       headers: {
@@ -56,48 +66,17 @@ export class AutoApprover {
         'User-Agent': `${toolName} v${toolVersion}`,
       },
     });
-    this.config.projects.gitHub.forEach(projectSlug => this.checkProject(projectSlug));
+    this.checkConfig(this.config);
   }
 
-  approveAllByMatch(match: RegExp): Promise<Array<{approveResults: ApproveResult[]; projectSlug: string}>> {
-    const validProjects = this.config.projects.gitHub
-      .map(projectSlug => this.checkProject(projectSlug))
-      .filter(Boolean) as string[];
-
-    return Promise.all(
-      validProjects.map(async projectSlug => {
-        const pullRequests = await this.getPullRequestsBySlug(projectSlug);
-        const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(match));
-        this.logger.info(
-          `Found matching pull requests for "${projectSlug}":`,
-          matchedPulls.map(pull => pull.title)
-        );
-        const approveResults = await Promise.all(
-          matchedPulls.map(async pull => this.approveByPullNumber(projectSlug, pull.number))
-        );
-        return {approveResults, projectSlug};
-      })
-    );
-  }
-
-  async approveByPullNumber(projectSlug: string, pullNumber: number): Promise<ApproveResult> {
-    const approveResult: ApproveResult = {pullNumber, status: 'ok'};
-    try {
-      await this.approvePullRequest(projectSlug, pullNumber);
-    } catch (error) {
-      this.logger.error(error);
-      approveResult.status = 'bad';
-      approveResult.error = error.toString();
+  private checkConfig(config: ApproverConfig): void {
+    if (!config.projects?.gitHub || config.projects.gitHub.length < 1) {
+      throw new Error('No projects in config file specified');
     }
-    return approveResult;
-  }
 
-  private async approvePullRequest(projectSlug: string, pullNumber: number): Promise<void> {
-    const resourceUrl = `/repos/${projectSlug}/pulls/${pullNumber}/reviews`;
-
-    await this.apiClient.post(resourceUrl, {
-      event: 'APPROVE',
-    });
+    if (!config.authToken) {
+      throw new Error('No authentication token in config file specified');
+    }
   }
 
   private checkProject(projectSlug: string): string | false {
@@ -111,15 +90,92 @@ export class AutoApprover {
     return projectSlug;
   }
 
-  private async getPullRequestsBySlug(projectSlug: string): Promise<GitHubPullRequest[]> {
-    const resourceUrl = `/repos/${projectSlug}/pulls`;
+  async approveAllByMatch(regex: RegExp): Promise<ProjectResult[]> {
+    const matchingProjects = await this.getMatchingProjects(regex);
 
-    const response = await this.apiClient.get<GitHubPullRequest[]>(resourceUrl, {
-      params: {
-        state: 'open',
-      },
+    const resultPromises = matchingProjects.map(async ({pullRequests, projectSlug}) => {
+      const actionPromises = pullRequests.map(pullRequest => this.approveByPullNumber(projectSlug, pullRequest.number));
+      const actionResults = await Promise.all(actionPromises);
+      return {actionResults, projectSlug};
     });
 
+    return Promise.all(resultPromises);
+  }
+
+  private getMatchingProjects(regex: RegExp): Promise<Project[]> {
+    const projectSlugs = this.config.projects.gitHub
+      .map(projectSlug => this.checkProject(projectSlug))
+      .filter(Boolean) as string[];
+
+    const projectsPromises = projectSlugs.map(async projectSlug => {
+      const pullRequests = await this.getPullRequestsBySlug(projectSlug);
+      const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
+      this.logger.info(
+        `Found matching pull requests for "${projectSlug}":`,
+        matchedPulls.map(pull => pull.title)
+      );
+      return {projectSlug, pullRequests: matchedPulls};
+    });
+
+    return Promise.all(projectsPromises);
+  }
+
+  async commentByMatch(regex: RegExp, comment: string): Promise<ProjectResult[]> {
+    const matchingProjects = await this.getMatchingProjects(regex);
+
+    const resultPromises = matchingProjects.map(async ({pullRequests, projectSlug}) => {
+      const actionPromises = pullRequests.map(pullRequest =>
+        this.commentOnPullRequest(projectSlug, pullRequest.number, comment)
+      );
+      const actionResults = await Promise.all(actionPromises);
+      return {actionResults, projectSlug};
+    });
+
+    return Promise.all(resultPromises);
+  }
+
+  async approveByPullNumber(projectSlug: string, pullNumber: number): Promise<ActionResult> {
+    const actionResult: ActionResult = {pullNumber, status: 'ok'};
+
+    try {
+      await this.postReview(projectSlug, pullNumber);
+    } catch (error) {
+      this.logger.error(error);
+      actionResult.status = 'bad';
+      actionResult.error = error.toString();
+    }
+    return actionResult;
+  }
+
+  async commentOnPullRequest(projectSlug: string, pullNumber: number, comment: string): Promise<ActionResult> {
+    const actionResult: ActionResult = {pullNumber, status: 'ok'};
+
+    try {
+      await this.postComment(projectSlug, pullNumber, comment);
+    } catch (error) {
+      this.logger.error(error);
+      actionResult.status = 'bad';
+      actionResult.error = error.toString();
+    }
+    return actionResult;
+  }
+
+  /** @see https://docs.github.com/en/rest/reference/pulls#create-a-review-for-a-pull-request */
+  private async postReview(projectSlug: string, pullNumber: number): Promise<void> {
+    const resourceUrl = `/repos/${projectSlug}/pulls/${pullNumber}/reviews`;
+    await this.apiClient.post(resourceUrl, {event: 'APPROVE'});
+  }
+
+  /** @see https://docs.github.com/en/rest/reference/issues#create-an-issue-comment */
+  private async postComment(projectSlug: string, pullNumber: number, comment: string): Promise<void> {
+    const resourceUrl = `/repos/${projectSlug}/issues/${pullNumber}/comments`;
+    await this.apiClient.post(resourceUrl, {body: comment});
+  }
+
+  private async getPullRequestsBySlug(projectSlug: string): Promise<GitHubPullRequest[]> {
+    const resourceUrl = `/repos/${projectSlug}/pulls`;
+    const params = {state: 'open'};
+    const response = await this.apiClient.get<GitHubPullRequest[]>(resourceUrl, {params});
     return response.data;
   }
 }
