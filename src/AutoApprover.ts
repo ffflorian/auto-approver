@@ -37,6 +37,16 @@ export interface ApproverConfig {
   verbose?: boolean;
 }
 
+export interface Project {
+  projectSlug: string;
+  pullRequests: GitHubPullRequest[];
+}
+
+export interface ProjectResult {
+  actionResults: ActionResult[];
+  projectSlug: string;
+}
+
 export class AutoApprover {
   private readonly apiClient: AxiosInstance;
   private readonly config: ApproverConfig;
@@ -59,7 +69,7 @@ export class AutoApprover {
     this.config.projects.gitHub.forEach(projectSlug => this.checkProject(projectSlug));
   }
 
-  async approveAllByMatch(regex: RegExp): Promise<Array<{actionResults: ActionResult[]; projectSlug: string}>> {
+  async approveAllByMatch(regex: RegExp): Promise<ProjectResult[]> {
     const pullRequests = await this.getMatchingProjects(regex);
 
     return Promise.all(
@@ -72,7 +82,7 @@ export class AutoApprover {
     );
   }
 
-  private getMatchingProjects(regex: RegExp): Promise<Array<{projectSlug: string; pullRequests: GitHubPullRequest[]}>> {
+  private getMatchingProjects(regex: RegExp): Promise<Project[]> {
     const projectSlugs = this.config.projects.gitHub
       .map(projectSlug => this.checkProject(projectSlug))
       .filter(Boolean) as string[];
@@ -90,10 +100,7 @@ export class AutoApprover {
     );
   }
 
-  async commentByMatch(
-    regex: RegExp,
-    comment: string
-  ): Promise<Array<{actionResults: ActionResult[]; projectSlug: string}>> {
+  async commentByMatch(regex: RegExp, comment: string): Promise<ProjectResult[]> {
     const pullRequests = await this.getMatchingProjects(regex);
     return Promise.all(
       pullRequests.map(async ({pullRequests, projectSlug}) => {
