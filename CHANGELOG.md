@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/ffflorian/auto-approver/compare/v1.2.0...v1.3.0) (2020-09-02)
+
+
+### Features
+
+* Comment on Pull Requests ([#226](https://github.com/ffflorian/auto-approver/issues/226)) ([f4f8f6d](https://github.com/ffflorian/auto-approver/commit/f4f8f6dd2bf28f8bd3f5ecd9355d1a12dc49341d))
+
 # [1.2.0](https://github.com/ffflorian/auto-approver/compare/v1.1.0...v1.2.0) (2020-08-12)
 
 ### Features
