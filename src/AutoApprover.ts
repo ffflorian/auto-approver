@@ -70,16 +70,15 @@ export class AutoApprover {
   }
 
   async approveAllByMatch(regex: RegExp): Promise<ProjectResult[]> {
-    const pullRequests = await this.getMatchingProjects(regex);
+    const matchingProjects = await this.getMatchingProjects(regex);
 
-    return Promise.all(
-      pullRequests.map(async ({pullRequests, projectSlug}) => {
-        const actionResults = await Promise.all(
-          pullRequests.map(pullRequest => this.approveByPullNumber(projectSlug, pullRequest.number))
-        );
-        return {actionResults, projectSlug};
-      })
-    );
+    const resultPromises = matchingProjects.map(async ({pullRequests, projectSlug}) => {
+      const actionPromises = pullRequests.map(pullRequest => this.approveByPullNumber(projectSlug, pullRequest.number));
+      const actionResults = await Promise.all(actionPromises);
+      return {actionResults, projectSlug};
+    });
+
+    return Promise.all(resultPromises);
   }
 
   private getMatchingProjects(regex: RegExp): Promise<Project[]> {
@@ -87,29 +86,31 @@ export class AutoApprover {
       .map(projectSlug => this.checkProject(projectSlug))
       .filter(Boolean) as string[];
 
-    return Promise.all(
-      projectSlugs.map(async projectSlug => {
-        const pullRequests = await this.getPullRequestsBySlug(projectSlug);
-        const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
-        this.logger.info(
-          `Found matching pull requests for "${projectSlug}":`,
-          matchedPulls.map(pull => pull.title)
-        );
-        return {projectSlug, pullRequests: matchedPulls};
-      })
-    );
+    const projectsPromises = projectSlugs.map(async projectSlug => {
+      const pullRequests = await this.getPullRequestsBySlug(projectSlug);
+      const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
+      this.logger.info(
+        `Found matching pull requests for "${projectSlug}":`,
+        matchedPulls.map(pull => pull.title)
+      );
+      return {projectSlug, pullRequests: matchedPulls};
+    });
+
+    return Promise.all(projectsPromises);
   }
 
   async commentByMatch(regex: RegExp, comment: string): Promise<ProjectResult[]> {
-    const pullRequests = await this.getMatchingProjects(regex);
-    return Promise.all(
-      pullRequests.map(async ({pullRequests, projectSlug}) => {
-        const actionResults = await Promise.all(
-          pullRequests.map(pullRequest => this.commentOnPullRequest(projectSlug, pullRequest.number, comment))
-        );
-        return {actionResults, projectSlug};
-      })
-    );
+    const matchingProjects = await this.getMatchingProjects(regex);
+
+    const resultPromises = matchingProjects.map(async ({pullRequests, projectSlug}) => {
+      const actionPromises = pullRequests.map(pullRequest =>
+        this.commentOnPullRequest(projectSlug, pullRequest.number, comment)
+      );
+      const actionResults = await Promise.all(actionPromises);
+      return {actionResults, projectSlug};
+    });
+
+    return Promise.all(resultPromises);
   }
 
   async approveByPullNumber(projectSlug: string, pullNumber: number): Promise<ActionResult> {
