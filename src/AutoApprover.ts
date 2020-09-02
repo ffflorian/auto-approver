@@ -1,7 +1,8 @@
-import axios, {AxiosInstance} from 'axios';
-import * as fs from 'fs';
 import * as logdown from 'logdown';
+import {GitHubPullRequest, GitHubClient} from './GitHubClient';
 import * as path from 'path';
+import * as fs from 'fs';
+import {GitLabClient, GitLabMergeRequest} from './GitLabClient';
 
 const defaultPackageJsonPath = path.join(__dirname, 'package.json');
 const packageJsonPath = fs.existsSync(defaultPackageJsonPath)
@@ -10,15 +11,6 @@ const packageJsonPath = fs.existsSync(defaultPackageJsonPath)
 
 const {bin, version: toolVersion} = require(packageJsonPath);
 const toolName = Object.keys(bin)[0];
-
-interface GitHubPullRequest {
-  head: {
-    ref: string;
-    sha: string;
-  };
-  number: number;
-  title: string;
-}
 
 export interface ActionResult {
   error?: string;
@@ -32,14 +24,21 @@ export interface ApproverConfig {
   /** All projects to include */
   projects: {
     /** All projects hosted on GitHub in the format `user/repo` */
-    gitHub: string[];
+    gitHub?: string[];
+    /** All projects hosted on GitLab in the format `user/repo` */
+    gitLab?: string[];
   };
   verbose?: boolean;
 }
 
-export interface Project {
+export interface GitHubProject {
   projectSlug: string;
   pullRequests: GitHubPullRequest[];
+}
+
+export interface GitLabProject {
+  projectSlug: string;
+  mergeRequests: GitLabMergeRequest[];
 }
 
 export interface ProjectResult {
@@ -48,9 +47,10 @@ export interface ProjectResult {
 }
 
 export class AutoApprover {
-  private readonly apiClient: AxiosInstance;
   private readonly config: ApproverConfig;
   private readonly logger: logdown.Logger;
+  private readonly gitHubClient: GitHubClient;
+  private readonly gitLabClient: GitLabClient;
 
   constructor(config: ApproverConfig) {
     this.config = config;
@@ -59,35 +59,27 @@ export class AutoApprover {
       markdown: false,
     });
     this.logger.state.isEnabled = true;
-    this.apiClient = axios.create({
-      baseURL: 'https://api.github.com',
-      headers: {
-        Authorization: `token ${this.config.authToken}`,
-        'User-Agent': `${toolName} v${toolVersion}`,
-      },
-    });
     this.checkConfig(this.config);
+
+    const userAgent = `${toolName} v${toolVersion}`;
+    this.gitHubClient = new GitHubClient(this.config.authToken, userAgent);
+    this.gitLabClient = new GitLabClient(this.config.authToken, userAgent);
   }
 
   private checkConfig(config: ApproverConfig): void {
-    if (!config.projects?.gitHub || config.projects.gitHub.length < 1) {
+    const hasGitHubProjects = config.projects?.gitHub && config.projects.gitHub.length >= 1;
+    const hasGitLabProjects = config.projects?.gitLab && config.projects.gitLab.length >= 1;
+
+    if (!hasGitHubProjects && !hasGitLabProjects) {
       throw new Error('No projects in config file specified');
     }
 
     if (!config.authToken) {
       throw new Error('No authentication token in config file specified');
     }
-  }
 
-  private checkProject(projectSlug: string): string | false {
-    const gitHubUsernameRegex = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
-    const gitHubProjectRegex = /^[\w-.]{0,100}$/i;
-    const [userName, project] = projectSlug.trim().replace(/^\//, '').replace(/\/$/, '').split('/');
-    if (!gitHubUsernameRegex.test(userName) || !gitHubProjectRegex.test(project)) {
-      this.logger.warn(`Invalid GitHub project slug "${projectSlug}". Skipping.`);
-      return false;
-    }
-    return projectSlug;
+    config.projects.gitHub ??= [];
+    config.projects.gitHub ??= [];
   }
 
   async approveAllByMatch(regex: RegExp): Promise<ProjectResult[]> {
@@ -102,22 +94,39 @@ export class AutoApprover {
     return Promise.all(resultPromises);
   }
 
-  private getMatchingProjects(regex: RegExp): Promise<Project[]> {
-    const projectSlugs = this.config.projects.gitHub
-      .map(projectSlug => this.checkProject(projectSlug))
+  private async getMatchingProjects(regex: RegExp): Promise<Array<GitHubProject | GitLabProject>> {
+    const gitHubProjectSlugs = this.config.projects.gitHub
+      ?.map(projectSlug => this.gitHubClient.checkProject(projectSlug))
       .filter(Boolean) as string[];
 
-    const projectsPromises = projectSlugs.map(async projectSlug => {
-      const pullRequests = await this.getPullRequestsBySlug(projectSlug);
-      const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
+    const gitLabProjectSlugs = this.config.projects.gitLab
+      ?.map(projectSlug => this.gitHubClient.checkProject(projectSlug))
+      .filter(Boolean) as string[];
+
+    const gitHubProjectsPromises: Promise<GitHubProject>[] = gitHubProjectSlugs.map(async projectSlug => {
+      const gitHubPullRequests = await this.gitHubClient.getPullRequestsBySlug(projectSlug);
+      const matchedPulls = gitHubPullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
       this.logger.info(
-        `Found matching pull requests for "${projectSlug}":`,
+        `Found matching GitHub pull requests for "${projectSlug}":`,
         matchedPulls.map(pull => pull.title)
       );
       return {projectSlug, pullRequests: matchedPulls};
     });
 
-    return Promise.all(projectsPromises);
+    const gitLabProjectsPromises: Promise<GitLabProject>[] = gitLabProjectSlugs.map(async projectSlug => {
+      const pullRequests = await this.gitLabClient.getPullRequestsBySlug(projectSlug);
+      const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.source_branch.match(regex));
+      this.logger.info(
+        `Found matching GitLab merge requests for "${projectSlug}":`,
+        matchedPulls.map(pull => pull.title)
+      );
+      return {projectSlug, mergeRequests: matchedPulls};
+    });
+
+    const gitHubProjects = await Promise.all(gitHubProjectsPromises);
+    const gitLabProjects = await Promise.all(gitLabProjectsPromises);
+
+    return [...gitHubProjects, ...gitLabProjects];
   }
 
   async commentByMatch(regex: RegExp, comment: string): Promise<ProjectResult[]> {
@@ -138,7 +147,7 @@ export class AutoApprover {
     const actionResult: ActionResult = {pullNumber, status: 'ok'};
 
     try {
-      await this.postReview(projectSlug, pullNumber);
+      await this.gitHubClient.postReview(projectSlug, pullNumber);
     } catch (error) {
       this.logger.error(error);
       actionResult.status = 'bad';
@@ -151,31 +160,12 @@ export class AutoApprover {
     const actionResult: ActionResult = {pullNumber, status: 'ok'};
 
     try {
-      await this.postComment(projectSlug, pullNumber, comment);
+      await this.gitHubClient.postComment(projectSlug, pullNumber, comment);
     } catch (error) {
       this.logger.error(error);
       actionResult.status = 'bad';
       actionResult.error = error.toString();
     }
     return actionResult;
-  }
-
-  /** @see https://docs.github.com/en/rest/reference/pulls#create-a-review-for-a-pull-request */
-  private async postReview(projectSlug: string, pullNumber: number): Promise<void> {
-    const resourceUrl = `/repos/${projectSlug}/pulls/${pullNumber}/reviews`;
-    await this.apiClient.post(resourceUrl, {event: 'APPROVE'});
-  }
-
-  /** @see https://docs.github.com/en/rest/reference/issues#create-an-issue-comment */
-  private async postComment(projectSlug: string, pullNumber: number, comment: string): Promise<void> {
-    const resourceUrl = `/repos/${projectSlug}/issues/${pullNumber}/comments`;
-    await this.apiClient.post(resourceUrl, {body: comment});
-  }
-
-  private async getPullRequestsBySlug(projectSlug: string): Promise<GitHubPullRequest[]> {
-    const resourceUrl = `/repos/${projectSlug}/pulls`;
-    const params = {state: 'open'};
-    const response = await this.apiClient.get<GitHubPullRequest[]>(resourceUrl, {params});
-    return response.data;
   }
 }
