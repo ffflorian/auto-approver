@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/ffflorian/auto-approver/compare/v1.3.0...v1.3.1) (2020-09-04)
+
+
+### Bug Fixes
+
+* Check if message was specified ([9747f77](https://github.com/ffflorian/auto-approver/commit/9747f772ab4abbc209f9e4bfe235b7526a119579))
+
 # [1.3.0](https://github.com/ffflorian/auto-approver/compare/v1.2.0...v1.3.0) (2020-09-02)
 
 
