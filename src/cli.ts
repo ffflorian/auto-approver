@@ -42,15 +42,15 @@ if (!configResult || configResult.isEmpty) {
 const configFileData = configResult.config as ApproverConfig;
 
 logger.info('Found the following repositories to check:', configFileData.projects.gitHub);
-const action = commander.comment ? 'comment on' : 'approve';
+const action = commander.message ? 'comment on' : 'approve';
 input.question(`ℹ️  auto-approver Which PR would you like to ${action} (enter a branch name)? `, async answer => {
   const autoApprover = new AutoApprover(configFileData);
 
   try {
-    if (commander.comment) {
-      const results = await autoApprover.commentByMatch(new RegExp(answer), commander.comment);
+    if (commander.message) {
+      const results = await autoApprover.commentByMatch(new RegExp(answer), commander.message);
       const approvedProjects = results.filter(result => result.actionResults.length > 0);
-      logger.info(`Commented "${commander.comment}" on ${approvedProjects.length} pull requests.`);
+      logger.info(`Commented "${commander.message}" on ${approvedProjects.length} pull requests.`);
     } else {
       const results = await autoApprover.approveAllByMatch(new RegExp(answer));
       const approvedProjects = results.filter(result => result.actionResults.length > 0);
