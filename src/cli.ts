@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as readline from 'readline';
 
 import {ApproverConfig, AutoApprover} from './AutoApprover';
+import {getPlural} from './util';
 
 const input = readline.createInterface(process.stdin, process.stdout);
 const logger = logdown('auto-approver', {
@@ -49,12 +50,14 @@ input.question(`ℹ️  auto-approver Which PR would you like to ${action} (ente
   try {
     if (commander.message) {
       const results = await autoApprover.commentByMatch(new RegExp(answer), commander.message);
-      const approvedProjects = results.filter(result => result.actionResults.length > 0);
-      logger.info(`Commented "${commander.message}" on ${approvedProjects.length} pull requests.`);
+      const commentedProjects = results.filter(result => result.actionResults.length > 0);
+      const pluralSingular = getPlural('request', commentedProjects.length);
+      logger.info(`Commented "${commander.message}" on ${commentedProjects.length} pull ${pluralSingular}.`);
     } else {
       const results = await autoApprover.approveAllByMatch(new RegExp(answer));
       const approvedProjects = results.filter(result => result.actionResults.length > 0);
-      logger.info(`Approved ${approvedProjects.length} pull requests.`);
+      const pluralSingular = getPlural('request', approvedProjects.length);
+      logger.info(`Approved ${approvedProjects.length} pull ${pluralSingular}.`);
     }
     process.exit();
   } catch (error) {

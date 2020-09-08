@@ -2,6 +2,7 @@ import axios, {AxiosInstance} from 'axios';
 import * as fs from 'fs';
 import * as logdown from 'logdown';
 import * as path from 'path';
+import {getPlural} from './util';
 
 const defaultPackageJsonPath = path.join(__dirname, 'package.json');
 const packageJsonPath = fs.existsSync(defaultPackageJsonPath)
@@ -110,10 +111,13 @@ export class AutoApprover {
     const projectsPromises = projectSlugs.map(async projectSlug => {
       const pullRequests = await this.getPullRequestsBySlug(projectSlug);
       const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
-      this.logger.info(
-        `Found matching pull requests for "${projectSlug}":`,
-        matchedPulls.map(pull => pull.title)
-      );
+      if (matchedPulls.length) {
+        const pluralSingular = getPlural('request', matchedPulls.length);
+        this.logger.info(
+          `Found ${matchedPulls.length} matching pull ${pluralSingular} for "${projectSlug}":`,
+          matchedPulls.map(pull => pull.title)
+        );
+      }
       return {projectSlug, pullRequests: matchedPulls};
     });
 
