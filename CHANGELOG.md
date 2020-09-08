@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/ffflorian/auto-approver/compare/v1.3.1...v1.3.2) (2020-09-08)
+
+
+### Bug Fixes
+
+* Don't show empty PRs, use plural/singular (fixes [#237](https://github.com/ffflorian/auto-approver/issues/237) and [#238](https://github.com/ffflorian/auto-approver/issues/238)) ([375f577](https://github.com/ffflorian/auto-approver/commit/375f5779fce802b3fea52823fb1e076e971dc22f))
+
 ## [1.3.1](https://github.com/ffflorian/auto-approver/compare/v1.3.0...v1.3.1) (2020-09-04)
 
 
