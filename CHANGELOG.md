@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/ffflorian/auto-approver/compare/v1.3.2...v1.4.0) (2020-09-11)
+
+
+### Features
+
+* Add comment as config file option ([48100ce](https://github.com/ffflorian/auto-approver/commit/48100ce03f3c605b9230435f88ea24b545acd0ff))
+
 ## [1.3.2](https://github.com/ffflorian/auto-approver/compare/v1.3.1...v1.3.2) (2020-09-08)
 
 
