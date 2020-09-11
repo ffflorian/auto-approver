@@ -27,7 +27,7 @@ const {bin, description, version} = require(packageJsonPath);
 commander
   .name(Object.keys(bin)[0])
   .description(description)
-  .option('-m, --message <text>', 'comment on PRs instead approving them')
+  .option('-m, --message <text>', 'comment on PRs instead of approving them')
   .option('-c, --config <path>', 'specify a configuration file (default: .approverrc.json)')
   .version(version)
   .parse(process.argv);
@@ -41,6 +41,10 @@ if (!configResult || configResult.isEmpty) {
 }
 
 const configFileData = configResult.config as ApproverConfig;
+
+if (configFileData.useComment) {
+  commander.message = configFileData.useComment;
+}
 
 logger.info('Found the following repositories to check:', configFileData.projects.gitHub);
 const action = commander.message ? 'comment on' : 'approve';

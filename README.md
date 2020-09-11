@@ -16,7 +16,7 @@ Usage: auto-approver [options]
 Automatically approve all GitHub PRs which match a specific pattern.
 
 Options:
-  -m, --message <text>  comment on PRs instead approving them
+  -m, --message <text>  comment on PRs instead of approving them
   -c, --config <path>   specify a configuration file (default: .approverrc.json)
   -V, --version         output the version number
   -h, --help            display help for command
@@ -37,6 +37,7 @@ The structure of the configuration file is the following:
     /** All projects hosted on GitHub in the format `user/repo` */
     gitHub: string[];
   };
+  useComment?: string;
   verbose?: boolean;
 }
 ```

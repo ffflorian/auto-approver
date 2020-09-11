@@ -35,6 +35,7 @@ export interface ApproverConfig {
     /** All projects hosted on GitHub in the format `user/repo` */
     gitHub: string[];
   };
+  useComment?: string;
   verbose?: boolean;
 }
 
