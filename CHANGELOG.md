@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/ffflorian/auto-approver/compare/v1.4.0...v1.4.1) (2020-09-14)
+
+
+### Bug Fixes
+
+* Count PRs and not projects in CLI ([7def03f](https://github.com/ffflorian/auto-approver/commit/7def03f36f09133022c13381b75f594bdfed7ca6))
+
 # [1.4.0](https://github.com/ffflorian/auto-approver/compare/v1.3.2...v1.4.0) (2020-09-11)
 
 
