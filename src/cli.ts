@@ -53,15 +53,15 @@ input.question(`ℹ️  auto-approver Which PR would you like to ${action} (ente
 
   try {
     if (commander.message) {
-      const results = await autoApprover.commentByMatch(new RegExp(answer), commander.message);
-      const commentedProjects = results.filter(result => result.actionResults.length > 0);
-      const pluralSingular = getPlural('request', commentedProjects.length);
-      logger.info(`Commented "${commander.message}" on ${commentedProjects.length} pull ${pluralSingular}.`);
+      const commentResult = await autoApprover.commentByMatch(new RegExp(answer), commander.message);
+      const commentedProjects = commentResult.reduce((count, project) => count + project.actionResults.length, 0);
+      const pluralSingular = getPlural('request', commentedProjects);
+      logger.info(`Commented "${commander.message}" on ${commentedProjects} pull ${pluralSingular}.`);
     } else {
-      const results = await autoApprover.approveAllByMatch(new RegExp(answer));
-      const approvedProjects = results.filter(result => result.actionResults.length > 0);
-      const pluralSingular = getPlural('request', approvedProjects.length);
-      logger.info(`Approved ${approvedProjects.length} pull ${pluralSingular}.`);
+      const approveResult = await autoApprover.approveAllByMatch(new RegExp(answer));
+      const approvedProjects = approveResult.reduce((count, project) => count + project.actionResults.length, 0);
+      const pluralSingular = getPlural('request', approvedProjects);
+      logger.info(`Approved ${approvedProjects} pull ${pluralSingular}.`);
     }
     process.exit();
   } catch (error) {
