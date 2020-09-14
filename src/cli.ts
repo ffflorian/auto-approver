@@ -40,23 +40,22 @@ if (!configResult || configResult.isEmpty) {
   commander.help();
 }
 
-const configFileData = configResult.config as ApproverConfig;
-
-if (configFileData.useComment) {
-  commander.message = configFileData.useComment;
-}
+const configFileData: ApproverConfig = {
+  ...configResult.config,
+  ...(commander.message && {useComment: commander.message}),
+};
 
 logger.info('Found the following repositories to check:', configFileData.projects.gitHub);
-const action = commander.message ? 'comment on' : 'approve';
+const action = configFileData.useComment ? 'comment on' : 'approve';
 input.question(`ℹ️  auto-approver Which PR would you like to ${action} (enter a branch name)? `, async answer => {
   const autoApprover = new AutoApprover(configFileData);
 
   try {
-    if (commander.message) {
-      const commentResult = await autoApprover.commentByMatch(new RegExp(answer), commander.message);
+    if (configFileData.useComment) {
+      const commentResult = await autoApprover.commentByMatch(new RegExp(answer), configFileData.useComment);
       const commentedProjects = commentResult.reduce((count, project) => count + project.actionResults.length, 0);
       const pluralSingular = getPlural('request', commentedProjects);
-      logger.info(`Commented "${commander.message}" on ${commentedProjects} pull ${pluralSingular}.`);
+      logger.info(`Commented "${configFileData.useComment}" on ${commentedProjects} pull ${pluralSingular}.`);
     } else {
       const approveResult = await autoApprover.approveAllByMatch(new RegExp(answer));
       const approvedProjects = approveResult.reduce((count, project) => count + project.actionResults.length, 0);
