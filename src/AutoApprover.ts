@@ -2,7 +2,6 @@ import axios, {AxiosInstance} from 'axios';
 import * as fs from 'fs';
 import * as logdown from 'logdown';
 import * as path from 'path';
-import {getPlural} from './util';
 
 const defaultPackageJsonPath = path.join(__dirname, 'package.json');
 const packageJsonPath = fs.existsSync(defaultPackageJsonPath)
@@ -39,14 +38,14 @@ export interface ApproverConfig {
   verbose?: boolean;
 }
 
-export interface Project {
-  projectSlug: string;
+export interface Repository {
   pullRequests: GitHubPullRequest[];
+  repositorySlug: string;
 }
 
-export interface ProjectResult {
+export interface RepositoryResult {
   actionResults: ActionResult[];
-  projectSlug: string;
+  repositorySlug: string;
 }
 
 export class AutoApprover {
@@ -81,69 +80,59 @@ export class AutoApprover {
     }
   }
 
-  private checkProject(projectSlug: string): string | false {
+  private checkRepository(repositorySlug: string): string | false {
     const gitHubUsernameRegex = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
-    const gitHubProjectRegex = /^[\w-.]{0,100}$/i;
-    const [userName, project] = projectSlug.trim().replace(/^\//, '').replace(/\/$/, '').split('/');
-    if (!gitHubUsernameRegex.test(userName) || !gitHubProjectRegex.test(project)) {
-      this.logger.warn(`Invalid GitHub project slug "${projectSlug}". Skipping.`);
+    const gitHubRepositoryRegex = /^[\w-.]{0,100}$/i;
+    const [userName, repositoryName] = repositorySlug.trim().replace(/^\//, '').replace(/\/$/, '').split('/');
+    if (!gitHubUsernameRegex.test(userName) || !gitHubRepositoryRegex.test(repositoryName)) {
+      this.logger.warn(`Invalid GitHub repository slug "${repositorySlug}". Skipping.`);
       return false;
     }
-    return projectSlug;
+    return repositorySlug;
   }
 
-  async approveAllByMatch(regex: RegExp): Promise<ProjectResult[]> {
-    const matchingProjects = await this.getMatchingProjects(regex);
+  async approveByMatch(regex: RegExp, repositories?: Repository[]): Promise<RepositoryResult[]> {
+    const allRepositories = repositories || (await this.getRepositoriesWithOpenPullRequests());
+    const matchingRepositories = this.getMatchingRepositories(allRepositories, regex);
 
-    const resultPromises = matchingProjects.map(async ({pullRequests, projectSlug}) => {
-      const actionPromises = pullRequests.map(pullRequest => this.approveByPullNumber(projectSlug, pullRequest.number));
-      const actionResults = await Promise.all(actionPromises);
-      return {actionResults, projectSlug};
-    });
-
-    return Promise.all(resultPromises);
-  }
-
-  private getMatchingProjects(regex: RegExp): Promise<Project[]> {
-    const projectSlugs = this.config.projects.gitHub
-      .map(projectSlug => this.checkProject(projectSlug))
-      .filter(Boolean) as string[];
-
-    const projectsPromises = projectSlugs.map(async projectSlug => {
-      const pullRequests = await this.getPullRequestsBySlug(projectSlug);
-      const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
-      if (matchedPulls.length) {
-        const pluralSingular = getPlural('request', matchedPulls.length);
-        this.logger.info(
-          `Found ${matchedPulls.length} matching pull ${pluralSingular} for "${projectSlug}":`,
-          matchedPulls.map(pull => pull.title)
-        );
-      }
-      return {projectSlug, pullRequests: matchedPulls};
-    });
-
-    return Promise.all(projectsPromises);
-  }
-
-  async commentByMatch(regex: RegExp, comment: string): Promise<ProjectResult[]> {
-    const matchingProjects = await this.getMatchingProjects(regex);
-
-    const resultPromises = matchingProjects.map(async ({pullRequests, projectSlug}) => {
+    const resultPromises = matchingRepositories.map(async ({pullRequests, repositorySlug}) => {
       const actionPromises = pullRequests.map(pullRequest =>
-        this.commentOnPullRequest(projectSlug, pullRequest.number, comment)
+        this.approveByPullNumber(repositorySlug, pullRequest.number)
       );
       const actionResults = await Promise.all(actionPromises);
-      return {actionResults, projectSlug};
+      return {actionResults, repositorySlug};
     });
 
     return Promise.all(resultPromises);
   }
 
-  async approveByPullNumber(projectSlug: string, pullNumber: number): Promise<ActionResult> {
+  private getMatchingRepositories(repositories: Repository[], regex: RegExp): Repository[] {
+    return repositories.filter(repository => {
+      const matchingRepositories = repository.pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
+      return !!matchingRepositories.length;
+    });
+  }
+
+  async commentByMatch(regex: RegExp, comment: string, repositories?: Repository[]): Promise<RepositoryResult[]> {
+    const allRepositories = repositories || (await this.getRepositoriesWithOpenPullRequests());
+    const matchingRepositories = this.getMatchingRepositories(allRepositories, regex);
+
+    const resultPromises = matchingRepositories.map(async ({pullRequests, repositorySlug}) => {
+      const actionPromises = pullRequests.map(pullRequest =>
+        this.commentOnPullRequest(repositorySlug, pullRequest.number, comment)
+      );
+      const actionResults = await Promise.all(actionPromises);
+      return {actionResults, repositorySlug};
+    });
+
+    return Promise.all(resultPromises);
+  }
+
+  async approveByPullNumber(repositorySlug: string, pullNumber: number): Promise<ActionResult> {
     const actionResult: ActionResult = {pullNumber, status: 'ok'};
 
     try {
-      await this.postReview(projectSlug, pullNumber);
+      await this.postReview(repositorySlug, pullNumber);
     } catch (error) {
       this.logger.error(error);
       actionResult.status = 'bad';
@@ -152,33 +141,51 @@ export class AutoApprover {
     return actionResult;
   }
 
-  async commentOnPullRequest(projectSlug: string, pullNumber: number, comment: string): Promise<ActionResult> {
+  async commentOnPullRequest(repositorySlug: string, pullNumber: number, comment: string): Promise<ActionResult> {
     const actionResult: ActionResult = {pullNumber, status: 'ok'};
 
     try {
-      await this.postComment(projectSlug, pullNumber, comment);
+      await this.postComment(repositorySlug, pullNumber, comment);
     } catch (error) {
       this.logger.error(error);
       actionResult.status = 'bad';
       actionResult.error = error.toString();
     }
     return actionResult;
+  }
+
+  async getAllRepositories(): Promise<Repository[]> {
+    const repositorySlugs = this.config.projects.gitHub
+      .map(repositorySlug => this.checkRepository(repositorySlug))
+      .filter(Boolean) as string[];
+
+    const repositoriesPromises = repositorySlugs.map(async repositorySlug => {
+      const pullRequests = await this.getPullRequestsBySlug(repositorySlug);
+      return {pullRequests, repositorySlug};
+    });
+
+    return Promise.all(repositoriesPromises);
+  }
+
+  async getRepositoriesWithOpenPullRequests(): Promise<Repository[]> {
+    const allRepositories = await this.getAllRepositories();
+    return allRepositories.filter(repository => !!repository.pullRequests.length);
   }
 
   /** @see https://docs.github.com/en/rest/reference/pulls#create-a-review-for-a-pull-request */
-  private async postReview(projectSlug: string, pullNumber: number): Promise<void> {
-    const resourceUrl = `/repos/${projectSlug}/pulls/${pullNumber}/reviews`;
+  private async postReview(repositorySlug: string, pullNumber: number): Promise<void> {
+    const resourceUrl = `/repos/${repositorySlug}/pulls/${pullNumber}/reviews`;
     await this.apiClient.post(resourceUrl, {event: 'APPROVE'});
   }
 
   /** @see https://docs.github.com/en/rest/reference/issues#create-an-issue-comment */
-  private async postComment(projectSlug: string, pullNumber: number, comment: string): Promise<void> {
-    const resourceUrl = `/repos/${projectSlug}/issues/${pullNumber}/comments`;
+  private async postComment(repositorySlug: string, pullNumber: number, comment: string): Promise<void> {
+    const resourceUrl = `/repos/${repositorySlug}/issues/${pullNumber}/comments`;
     await this.apiClient.post(resourceUrl, {body: comment});
   }
 
-  private async getPullRequestsBySlug(projectSlug: string): Promise<GitHubPullRequest[]> {
-    const resourceUrl = `/repos/${projectSlug}/pulls`;
+  private async getPullRequestsBySlug(repositorySlug: string): Promise<GitHubPullRequest[]> {
+    const resourceUrl = `/repos/${repositorySlug}/pulls`;
     const params = {state: 'open'};
     const response = await this.apiClient.get<GitHubPullRequest[]>(resourceUrl, {params});
     return response.data;
