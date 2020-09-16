@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as readline from 'readline';
 
 import {ApproverConfig, AutoApprover} from './AutoApprover';
+import {getPlural} from './util';
 
 const input = readline.createInterface(process.stdin, process.stdout);
 const logger = logdown('auto-approver', {
@@ -26,7 +27,7 @@ const {bin, description, version} = require(packageJsonPath);
 commander
   .name(Object.keys(bin)[0])
   .description(description)
-  .option('-m, --message <text>', 'comment on PRs instead approving them')
+  .option('-m, --message <text>', 'comment on PRs instead of approving them')
   .option('-c, --config <path>', 'specify a configuration file (default: .approverrc.json)')
   .version(version)
   .parse(process.argv);
@@ -39,22 +40,27 @@ if (!configResult || configResult.isEmpty) {
   commander.help();
 }
 
-const configFileData = configResult.config as ApproverConfig;
+const configFileData: ApproverConfig = {
+  ...configResult.config,
+  ...(commander.message && {useComment: commander.message}),
+};
 
 logger.info('Found the following repositories to check:', configFileData.projects.gitHub);
-const action = commander.comment ? 'comment on' : 'approve';
+const action = configFileData.useComment ? 'comment on' : 'approve';
 input.question(`ℹ️  auto-approver Which PR would you like to ${action} (enter a branch name)? `, async answer => {
   const autoApprover = new AutoApprover(configFileData);
 
   try {
-    if (commander.comment) {
-      const results = await autoApprover.commentByMatch(new RegExp(answer), commander.comment);
-      const approvedProjects = results.filter(result => result.actionResults.length > 0);
-      logger.info(`Commented "${commander.comment}" on ${approvedProjects.length} pull requests.`);
+    if (configFileData.useComment) {
+      const commentResult = await autoApprover.commentByMatch(new RegExp(answer), configFileData.useComment);
+      const commentedProjects = commentResult.reduce((count, project) => count + project.actionResults.length, 0);
+      const pluralSingular = getPlural('request', commentedProjects);
+      logger.info(`Commented "${configFileData.useComment}" on ${commentedProjects} pull ${pluralSingular}.`);
     } else {
-      const results = await autoApprover.approveAllByMatch(new RegExp(answer));
-      const approvedProjects = results.filter(result => result.actionResults.length > 0);
-      logger.info(`Approved ${approvedProjects.length} pull requests.`);
+      const approveResult = await autoApprover.approveAllByMatch(new RegExp(answer));
+      const approvedProjects = approveResult.reduce((count, project) => count + project.actionResults.length, 0);
+      const pluralSingular = getPlural('request', approvedProjects);
+      logger.info(`Approved ${approvedProjects} pull ${pluralSingular}.`);
     }
     process.exit();
   } catch (error) {

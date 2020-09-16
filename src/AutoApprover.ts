@@ -2,7 +2,9 @@ import * as logdown from 'logdown';
 import {GitHubPullRequest, GitHubClient} from './GitHubClient';
 import * as path from 'path';
 import * as fs from 'fs';
+
 import {GitLabClient, GitLabMergeRequest} from './GitLabClient';
+import {getPlural} from './util';
 
 const defaultPackageJsonPath = path.join(__dirname, 'package.json');
 const packageJsonPath = fs.existsSync(defaultPackageJsonPath)
@@ -28,6 +30,7 @@ export interface ApproverConfig {
     /** All projects hosted on GitLab in the format `user/repo` */
     gitLab?: string[];
   };
+  useComment?: string;
   verbose?: boolean;
 }
 
@@ -37,8 +40,8 @@ export interface GitHubProject {
 }
 
 export interface GitLabProject {
-  projectSlug: string;
   mergeRequests: GitLabMergeRequest[];
+  projectSlug: string;
 }
 
 export interface ProjectResult {
@@ -78,17 +81,28 @@ export class AutoApprover {
       throw new Error('No authentication token in config file specified');
     }
 
+    /* eslint-disable no-unsanitized/property */
     config.projects.gitHub ??= [];
-    config.projects.gitHub ??= [];
+    config.projects.gitLab ??= [];
+    /* eslint-enable no-unsanitized/property */
   }
 
   async approveAllByMatch(regex: RegExp): Promise<ProjectResult[]> {
     const matchingProjects = await this.getMatchingProjects(regex);
 
-    const resultPromises = matchingProjects.map(async ({pullRequests, projectSlug}) => {
-      const actionPromises = pullRequests.map(pullRequest => this.approveByPullNumber(projectSlug, pullRequest.number));
+    const resultPromises = matchingProjects.map(async matchingProject => {
+      if ('pullRequests' in matchingProject) {
+        const actionPromises = matchingProject.pullRequests.map(pullRequest =>
+          this.approveByPullNumber(matchingProject.projectSlug, pullRequest.number)
+        );
+        const actionResults = await Promise.all(actionPromises);
+        return {actionResults, projectSlug: matchingProject.projectSlug};
+      }
+      const actionPromises = matchingProject.mergeRequests.map(mergeRequest =>
+        this.approveByPullNumber(matchingProject.projectSlug, mergeRequest.id)
+      );
       const actionResults = await Promise.all(actionPromises);
-      return {actionResults, projectSlug};
+      return {actionResults, projectSlug: matchingProject.projectSlug};
     });
 
     return Promise.all(resultPromises);
@@ -103,24 +117,27 @@ export class AutoApprover {
       ?.map(projectSlug => this.gitHubClient.checkProject(projectSlug))
       .filter(Boolean) as string[];
 
-    const gitHubProjectsPromises: Promise<GitHubProject>[] = gitHubProjectSlugs.map(async projectSlug => {
-      const gitHubPullRequests = await this.gitHubClient.getPullRequestsBySlug(projectSlug);
-      const matchedPulls = gitHubPullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
-      this.logger.info(
-        `Found matching GitHub pull requests for "${projectSlug}":`,
-        matchedPulls.map(pull => pull.title)
-      );
+    const gitHubProjectsPromises = gitHubProjectSlugs.map(async projectSlug => {
+      const pullRequests = await this.gitHubClient.getPullRequestsBySlug(projectSlug);
+      const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
+      if (matchedPulls.length) {
+        const pluralSingular = getPlural('request', matchedPulls.length);
+        this.logger.info(
+          `Found ${matchedPulls.length} matching pull ${pluralSingular} for "${projectSlug}":`,
+          matchedPulls.map(pull => pull.title)
+        );
+      }
       return {projectSlug, pullRequests: matchedPulls};
     });
 
-    const gitLabProjectsPromises: Promise<GitLabProject>[] = gitLabProjectSlugs.map(async projectSlug => {
+    const gitLabProjectsPromises: Array<Promise<GitLabProject>> = gitLabProjectSlugs.map(async projectSlug => {
       const pullRequests = await this.gitLabClient.getPullRequestsBySlug(projectSlug);
       const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.source_branch.match(regex));
       this.logger.info(
         `Found matching GitLab merge requests for "${projectSlug}":`,
         matchedPulls.map(pull => pull.title)
       );
-      return {projectSlug, mergeRequests: matchedPulls};
+      return {mergeRequests: matchedPulls, projectSlug};
     });
 
     const gitHubProjects = await Promise.all(gitHubProjectsPromises);
@@ -132,12 +149,19 @@ export class AutoApprover {
   async commentByMatch(regex: RegExp, comment: string): Promise<ProjectResult[]> {
     const matchingProjects = await this.getMatchingProjects(regex);
 
-    const resultPromises = matchingProjects.map(async ({pullRequests, projectSlug}) => {
-      const actionPromises = pullRequests.map(pullRequest =>
-        this.commentOnPullRequest(projectSlug, pullRequest.number, comment)
+    const resultPromises = matchingProjects.map(async matchingProject => {
+      if ('pullRequests' in matchingProject) {
+        const actionPromises = matchingProject.pullRequests.map(pullRequest =>
+          this.commentOnPullRequest(matchingProject.projectSlug, pullRequest.number, comment)
+        );
+        const actionResults = await Promise.all(actionPromises);
+        return {actionResults, projectSlug: matchingProject.projectSlug};
+      }
+      const actionPromises = matchingProject.mergeRequests.map(mergeRequest =>
+        this.commentOnPullRequest(matchingProject.projectSlug, mergeRequest.id, comment)
       );
       const actionResults = await Promise.all(actionPromises);
-      return {actionResults, projectSlug};
+      return {actionResults, projectSlug: matchingProject.projectSlug};
     });
 
     return Promise.all(resultPromises);
