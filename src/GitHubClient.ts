@@ -1,6 +1,7 @@
 import * as logdown from 'logdown';
 import axios, {AxiosInstance} from 'axios';
 
+/** @see https://docs.github.com/en/rest/reference/pulls#get-a-pull-request */
 export interface GitHubPullRequest {
   head: {
     /** The branch name */
@@ -12,6 +13,17 @@ export interface GitHubPullRequest {
   number: number;
   /** The pull request title */
   title: string;
+}
+
+export interface GitHubActionResult {
+  error?: string;
+  pullRequestNumber: number;
+  status: 'bad' | 'ok';
+}
+
+export interface GitHubProject {
+  projectSlug: string;
+  pullRequests: GitHubPullRequest[];
 }
 
 export class GitHubClient {
@@ -33,15 +45,45 @@ export class GitHubClient {
     this.logger.state.isEnabled = true;
   }
 
+  async approveByPullNumber(projectSlug: string, pullRequestNumber: number): Promise<GitHubActionResult> {
+    const actionResult: GitHubActionResult = {pullRequestNumber, status: 'ok'};
+
+    try {
+      await this.postReview(projectSlug, pullRequestNumber);
+    } catch (error) {
+      this.logger.error(error);
+      actionResult.status = 'bad';
+      actionResult.error = error.toString();
+    }
+    return actionResult;
+  }
+
+  async commentOnPullRequest(
+    projectSlug: string,
+    pullRequestNumber: number,
+    comment: string
+  ): Promise<GitHubActionResult> {
+    const actionResult: GitHubActionResult = {pullRequestNumber, status: 'ok'};
+
+    try {
+      await this.postComment(projectSlug, pullRequestNumber, comment);
+    } catch (error) {
+      this.logger.error(error);
+      actionResult.status = 'bad';
+      actionResult.error = error.toString();
+    }
+    return actionResult;
+  }
+
   /** @see https://docs.github.com/en/rest/reference/pulls#create-a-review-for-a-pull-request */
-  async postReview(projectSlug: string, pullNumber: number): Promise<void> {
-    const resourceUrl = `/repos/${projectSlug}/pulls/${pullNumber}/reviews`;
+  async postReview(projectSlug: string, pullRequestNumber: number): Promise<void> {
+    const resourceUrl = `/repos/${projectSlug}/pulls/${pullRequestNumber}/reviews`;
     await this.apiClient.post(resourceUrl, {event: 'APPROVE'});
   }
 
   /** @see https://docs.github.com/en/rest/reference/issues#create-an-issue-comment */
-  async postComment(projectSlug: string, pullNumber: number, comment: string): Promise<void> {
-    const resourceUrl = `/repos/${projectSlug}/issues/${pullNumber}/comments`;
+  async postComment(projectSlug: string, pullRequestNumber: number, comment: string): Promise<void> {
+    const resourceUrl = `/repos/${projectSlug}/issues/${pullRequestNumber}/comments`;
     await this.apiClient.post(resourceUrl, {body: comment});
   }
 
@@ -51,16 +93,5 @@ export class GitHubClient {
     const params = {state: 'open'};
     const response = await this.apiClient.get<GitHubPullRequest[]>(resourceUrl, {params});
     return response.data;
-  }
-
-  checkProject(projectSlug: string): string | false {
-    const gitHubUsernameRegex = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
-    const gitHubProjectRegex = /^[\w-.]{0,100}$/i;
-    const [userName, project] = projectSlug.trim().replace(/^\//, '').replace(/\/$/, '').split('/');
-    if (!gitHubUsernameRegex.test(userName) || !gitHubProjectRegex.test(project)) {
-      this.logger.warn(`Invalid GitHub project slug "${projectSlug}". Skipping.`);
-      return false;
-    }
-    return projectSlug;
   }
 }

@@ -1,9 +1,9 @@
 import * as logdown from 'logdown';
-import {GitHubPullRequest, GitHubClient} from './GitHubClient';
+import {GitHubClient, GitHubActionResult, GitHubProject} from './GitHubClient';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import {GitLabClient, GitLabMergeRequest} from './GitLabClient';
+import {GitLabActionResult, GitLabClient, GitLabProject} from './GitLabClient';
 import {getPlural} from './util';
 
 const defaultPackageJsonPath = path.join(__dirname, 'package.json');
@@ -13,12 +13,6 @@ const packageJsonPath = fs.existsSync(defaultPackageJsonPath)
 
 const {bin, version: toolVersion} = require(packageJsonPath);
 const toolName = Object.keys(bin)[0];
-
-export interface ActionResult {
-  error?: string;
-  pullNumber: number;
-  status: 'bad' | 'ok';
-}
 
 export interface ApproverConfig {
   /** The GitHub auth token */
@@ -34,18 +28,8 @@ export interface ApproverConfig {
   verbose?: boolean;
 }
 
-export interface GitHubProject {
-  projectSlug: string;
-  pullRequests: GitHubPullRequest[];
-}
-
-export interface GitLabProject {
-  mergeRequests: GitLabMergeRequest[];
-  projectSlug: string;
-}
-
 export interface ProjectResult {
-  actionResults: ActionResult[];
+  actionResults: Array<GitHubActionResult | GitLabActionResult>;
   projectSlug: string;
 }
 
@@ -93,13 +77,13 @@ export class AutoApprover {
     const resultPromises = matchingProjects.map(async matchingProject => {
       if ('pullRequests' in matchingProject) {
         const actionPromises = matchingProject.pullRequests.map(pullRequest =>
-          this.approveByPullNumber(matchingProject.projectSlug, pullRequest.number)
+          this.gitHubClient.approveByPullNumber(matchingProject.projectSlug, pullRequest.number)
         );
         const actionResults = await Promise.all(actionPromises);
         return {actionResults, projectSlug: matchingProject.projectSlug};
       }
       const actionPromises = matchingProject.mergeRequests.map(mergeRequest =>
-        this.approveByPullNumber(matchingProject.projectSlug, mergeRequest.id)
+        this.gitLabClient.approveByMergeRequestId(matchingProject.projectSlug, mergeRequest.id)
       );
       const actionResults = await Promise.all(actionPromises);
       return {actionResults, projectSlug: matchingProject.projectSlug};
@@ -108,16 +92,27 @@ export class AutoApprover {
     return Promise.all(resultPromises);
   }
 
+  private checkProject(projectSlug: string): string | false {
+    const usernameRegex = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
+    const projectNameRegex = /^[\w-.]{0,100}$/i;
+    const [userName, project] = projectSlug.trim().replace(/^\//, '').replace(/\/$/, '').split('/');
+    if (!usernameRegex.test(userName) || !projectNameRegex.test(project)) {
+      this.logger.warn(`Invalid project slug "${projectSlug}". Skipping.`);
+      return false;
+    }
+    return projectSlug;
+  }
+
   private async getMatchingProjects(regex: RegExp): Promise<Array<GitHubProject | GitLabProject>> {
     const gitHubProjectSlugs = this.config.projects.gitHub
-      ?.map(projectSlug => this.gitHubClient.checkProject(projectSlug))
+      ?.map(projectSlug => this.checkProject(projectSlug))
       .filter(Boolean) as string[];
 
     const gitLabProjectSlugs = this.config.projects.gitLab
-      ?.map(projectSlug => this.gitHubClient.checkProject(projectSlug))
+      ?.map(projectSlug => this.checkProject(projectSlug))
       .filter(Boolean) as string[];
 
-    const gitHubProjectsPromises = gitHubProjectSlugs.map(async projectSlug => {
+    const gitHubProjectsPromises: Array<Promise<GitHubProject>> = gitHubProjectSlugs.map(async projectSlug => {
       const pullRequests = await this.gitHubClient.getPullRequestsBySlug(projectSlug);
       const matchedPulls = pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
       if (matchedPulls.length) {
@@ -152,44 +147,18 @@ export class AutoApprover {
     const resultPromises = matchingProjects.map(async matchingProject => {
       if ('pullRequests' in matchingProject) {
         const actionPromises = matchingProject.pullRequests.map(pullRequest =>
-          this.commentOnPullRequest(matchingProject.projectSlug, pullRequest.number, comment)
+          this.gitHubClient.commentOnPullRequest(matchingProject.projectSlug, pullRequest.number, comment)
         );
         const actionResults = await Promise.all(actionPromises);
         return {actionResults, projectSlug: matchingProject.projectSlug};
       }
       const actionPromises = matchingProject.mergeRequests.map(mergeRequest =>
-        this.commentOnPullRequest(matchingProject.projectSlug, mergeRequest.id, comment)
+        this.gitLabClient.commentOnPullRequest(matchingProject.projectSlug, mergeRequest.id, comment)
       );
       const actionResults = await Promise.all(actionPromises);
       return {actionResults, projectSlug: matchingProject.projectSlug};
     });
 
     return Promise.all(resultPromises);
-  }
-
-  async approveByPullNumber(projectSlug: string, pullNumber: number): Promise<ActionResult> {
-    const actionResult: ActionResult = {pullNumber, status: 'ok'};
-
-    try {
-      await this.gitHubClient.postReview(projectSlug, pullNumber);
-    } catch (error) {
-      this.logger.error(error);
-      actionResult.status = 'bad';
-      actionResult.error = error.toString();
-    }
-    return actionResult;
-  }
-
-  async commentOnPullRequest(projectSlug: string, pullNumber: number, comment: string): Promise<ActionResult> {
-    const actionResult: ActionResult = {pullNumber, status: 'ok'};
-
-    try {
-      await this.gitHubClient.postComment(projectSlug, pullNumber, comment);
-    } catch (error) {
-      this.logger.error(error);
-      actionResult.status = 'bad';
-      actionResult.error = error.toString();
-    }
-    return actionResult;
   }
 }
