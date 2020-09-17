@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/ffflorian/auto-approver/compare/v1.4.1...v1.5.0) (2020-09-17)
+
+
+### Features
+
+* Load PRs on startup ([#249](https://github.com/ffflorian/auto-approver/issues/249)) ([b2a8c57](https://github.com/ffflorian/auto-approver/commit/b2a8c5798c24d9abeab677d2407ebbc863bdbb49))
+
 ## [1.4.1](https://github.com/ffflorian/auto-approver/compare/v1.4.0...v1.4.1) (2020-09-14)
 
 
