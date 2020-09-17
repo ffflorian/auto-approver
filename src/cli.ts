@@ -7,7 +7,7 @@ import * as logdown from 'logdown';
 import * as path from 'path';
 import * as readline from 'readline';
 
-import {ApproverConfig, AutoApprover} from './AutoApprover';
+import {ApproverConfig, AutoApprover, Repository} from './AutoApprover';
 import {getPlural} from './util';
 
 const input = readline.createInterface(process.stdin, process.stdout);
@@ -45,26 +45,76 @@ const configFileData: ApproverConfig = {
   ...(commander.message && {useComment: commander.message}),
 };
 
-logger.info('Found the following repositories to check:', configFileData.projects.gitHub);
-const action = configFileData.useComment ? 'comment on' : 'approve';
-input.question(`ℹ️  auto-approver Which PR would you like to ${action} (enter a branch name)? `, async answer => {
-  const autoApprover = new AutoApprover(configFileData);
+async function runAction(
+  autoApprover: AutoApprover,
+  repositories: Repository[],
+  pullRequestSlug: string
+): Promise<void> {
+  if (configFileData.useComment) {
+    const commentResult = await autoApprover.commentByMatch(
+      new RegExp(pullRequestSlug),
+      configFileData.useComment,
+      repositories
+    );
+    const commentedRepositories = commentResult.reduce(
+      (count, repository) => count + repository.actionResults.length,
+      0
+    );
+    const pluralSingular = getPlural('request', commentedRepositories);
+    logger.info(`Commented "${configFileData.useComment}" on ${commentedRepositories} pull ${pluralSingular}.`);
+  } else {
+    const approveResult = await autoApprover.approveByMatch(new RegExp(pullRequestSlug), repositories);
+    const approvedRepositories = approveResult.reduce(
+      (count, repository) => count + repository.actionResults.length,
+      0
+    );
+    const pluralSingular = getPlural('request', approvedRepositories);
+    logger.info(`Approved ${approvedRepositories} pull ${pluralSingular}.`);
+  }
+}
 
+function askQuestion(question: string): Promise<string> {
+  return new Promise(resolve => {
+    input.question(question, answer => resolve(answer));
+  });
+}
+
+async function askAction(autoApprover: AutoApprover, repositories: Repository[], doAction: string): Promise<void> {
+  const answer = await askQuestion(`ℹ️  auto-approver Which PR would you like to ${doAction} (enter a branch name)? `);
+  await runAction(autoApprover, repositories, answer);
+  await actionLoop(autoApprover, repositories, doAction);
+}
+
+async function actionLoop(autoApprover: AutoApprover, repositories: Repository[], doAction: string): Promise<void> {
+  const answer = await askQuestion(`ℹ️  auto-approver Would you like to ${doAction} another PR (Y/n)? `);
+  if (!/n(o)?$/i.test(answer)) {
+    await askAction(autoApprover, repositories, doAction);
+  }
+}
+
+void (async () => {
   try {
-    if (configFileData.useComment) {
-      const commentResult = await autoApprover.commentByMatch(new RegExp(answer), configFileData.useComment);
-      const commentedProjects = commentResult.reduce((count, project) => count + project.actionResults.length, 0);
-      const pluralSingular = getPlural('request', commentedProjects);
-      logger.info(`Commented "${configFileData.useComment}" on ${commentedProjects} pull ${pluralSingular}.`);
+    const autoApprover = new AutoApprover(configFileData);
+    logger.info('Loading all pull requests ...');
+    const allRepositories = await autoApprover.getRepositoriesWithOpenPullRequests();
+
+    if (!!allRepositories.length) {
+      const repositories = allRepositories.map(repository => {
+        const prText = getPlural('PR', repository.pullRequests.length);
+        return `${repository.repositorySlug} (${repository.pullRequests.length} open ${prText})`;
+      });
+
+      logger.info('Found the following repositories to check:', repositories);
+
+      const doAction = configFileData.useComment ? 'comment on' : 'approve';
+      await askAction(autoApprover, allRepositories, doAction);
     } else {
-      const approveResult = await autoApprover.approveAllByMatch(new RegExp(answer));
-      const approvedProjects = approveResult.reduce((count, project) => count + project.actionResults.length, 0);
-      const pluralSingular = getPlural('request', approvedProjects);
-      logger.info(`Approved ${approvedProjects} pull ${pluralSingular}.`);
+      logger.info('Could not find any repositories with open pull requests.');
     }
+
     process.exit();
   } catch (error) {
     logger.error(error);
     process.exit(1);
   }
-});
+})();
