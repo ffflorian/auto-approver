@@ -32,12 +32,19 @@ The structure of the configuration file is the following:
 {
   /** The GitHub auth token */
   authToken: string;
+  /** Don't send any data */
+  dryRun?: boolean;
   /** All projects to include */
   projects: {
     /** All projects hosted on GitHub in the format `user/repo` */
     gitHub: string[];
   };
+  /** Post a comment on the PRs instead of approving them */
   useComment?: string;
+  /**
+   * Currently not in use
+   * @deprecated
+   */
   verbose?: boolean;
 }
 ```

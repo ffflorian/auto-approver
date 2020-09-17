@@ -29,12 +29,19 @@ export interface ActionResult {
 export interface ApproverConfig {
   /** The GitHub auth token */
   authToken: string;
+  /** Don't send any data */
+  dryRun?: boolean;
   /** All projects to include */
   projects: {
     /** All projects hosted on GitHub in the format `user/repo` */
     gitHub: string[];
   };
+  /** Post a comment on the PRs instead of approving them */
   useComment?: string;
+  /**
+   * Currently not in use
+   * @deprecated
+   */
   verbose?: boolean;
 }
 
@@ -132,7 +139,9 @@ export class AutoApprover {
     const actionResult: ActionResult = {pullNumber, status: 'ok'};
 
     try {
-      await this.postReview(repositorySlug, pullNumber);
+      if (!this.config.dryRun) {
+        await this.postReview(repositorySlug, pullNumber);
+      }
     } catch (error) {
       this.logger.error(error);
       actionResult.status = 'bad';
@@ -145,7 +154,9 @@ export class AutoApprover {
     const actionResult: ActionResult = {pullNumber, status: 'ok'};
 
     try {
-      await this.postComment(repositorySlug, pullNumber, comment);
+      if (!this.config.dryRun) {
+        await this.postComment(repositorySlug, pullNumber, comment);
+      }
     } catch (error) {
       this.logger.error(error);
       actionResult.status = 'bad';
