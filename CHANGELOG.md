@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/ffflorian/auto-approver/compare/v1.5.0...v1.6.0) (2020-09-17)
+
+
+### Features
+
+* Add dry-run option ([98cd040](https://github.com/ffflorian/auto-approver/commit/98cd04025b9de06eb9e1a80c5095c059fb47411c))
+
 # [1.5.0](https://github.com/ffflorian/auto-approver/compare/v1.4.1...v1.5.0) (2020-09-17)
 
 
