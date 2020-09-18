@@ -29,7 +29,7 @@ commander
   .description(description)
   .option('-m, --message <text>', 'comment on PRs instead of approving them')
   .option('-c, --config <path>', 'specify a configuration file (default: .approverrc.json)')
-  .option('-d', '--dry-run', `don't send any data`)
+  .option('-d, --dry-run', `don't send any data`)
   .version(version)
   .parse(process.argv);
 
@@ -44,7 +44,7 @@ if (!configResult || configResult.isEmpty) {
 const configFileData: ApproverConfig = {
   ...configResult.config,
   ...(commander.message && {useComment: commander.message}),
-  ...(typeof commander.dryRun !== 'undefined' && {dryRun: commander.dryRun}),
+  ...(commander.dryRun && {dryRun: commander.dryRun}),
 };
 
 async function runAction(
