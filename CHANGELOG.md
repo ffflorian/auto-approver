@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/ffflorian/auto-approver/compare/v1.6.0...v1.6.1) (2020-09-18)
+
+
+### Bug Fixes
+
+* Dry-run option format ([f425ea7](https://github.com/ffflorian/auto-approver/commit/f425ea76ae15db977e43aeeb55c5268b7fb0ac5c))
+
 # [1.6.0](https://github.com/ffflorian/auto-approver/compare/v1.5.0...v1.6.0) (2020-09-17)
 
 
