@@ -11,12 +11,17 @@ const packageJsonPath = fs.existsSync(defaultPackageJsonPath)
 const {bin, version: toolVersion} = require(packageJsonPath);
 const toolName = Object.keys(bin)[0];
 
+/** @see https://docs.github.com/en/rest/reference/pulls#get-a-pull-request */
 interface GitHubPullRequest {
   head: {
+    /** The branch name */
     ref: string;
+    /** The commit SHA-1 hash */
     sha: string;
   };
+  /** The pull request number */
   number: number;
+  /** The pull request title */
   title: string;
 }
 
@@ -87,15 +92,15 @@ export class AutoApprover {
     }
   }
 
-  private checkRepository(repositorySlug: string): string | false {
-    const gitHubUsernameRegex = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
-    const gitHubRepositoryRegex = /^[\w-.]{0,100}$/i;
+  private checkRepositorySlug(repositorySlug: string): boolean {
+    const gitHubUsernameRegex = /^\w+(?:-?\w+){0,37}\w$/i;
+    const gitHubRepositoryRegex = /^[\w-.]{0,99}\w$/i;
     const [userName, repositoryName] = repositorySlug.trim().replace(/^\//, '').replace(/\/$/, '').split('/');
-    if (!gitHubUsernameRegex.test(userName) || !gitHubRepositoryRegex.test(repositoryName)) {
+    if (!repositoryName || !gitHubUsernameRegex.test(userName) || !gitHubRepositoryRegex.test(repositoryName)) {
       this.logger.warn(`Invalid GitHub repository slug "${repositorySlug}". Skipping.`);
       return false;
     }
-    return repositorySlug;
+    return true;
   }
 
   async approveByMatch(regex: RegExp, repositories?: Repository[]): Promise<RepositoryResult[]> {
@@ -166,9 +171,9 @@ export class AutoApprover {
   }
 
   async getAllRepositories(): Promise<Repository[]> {
-    const repositorySlugs = this.config.projects.gitHub
-      .map(repositorySlug => this.checkRepository(repositorySlug))
-      .filter(Boolean) as string[];
+    const repositorySlugs = this.config.projects.gitHub.filter(repositorySlug =>
+      this.checkRepositorySlug(repositorySlug)
+    );
 
     const repositoriesPromises = repositorySlugs.map(async repositorySlug => {
       const pullRequests = await this.getPullRequestsBySlug(repositorySlug);
