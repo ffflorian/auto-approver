@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as readline from 'readline';
 
 import {ApproverConfig, AutoApprover, Repository} from './AutoApprover';
-import {getPlural} from './util';
+import {pluralize} from './util';
 
 const input = readline.createInterface(process.stdin, process.stdout);
 const logger = logdown('auto-approver', {
@@ -62,7 +62,7 @@ async function runAction(
       (count, repository) => count + repository.actionResults.length,
       0
     );
-    const pluralSingular = getPlural('request', commentedRepositories);
+    const pluralSingular = pluralize('request', commentedRepositories);
     logger.info(`Commented "${configFileData.useComment}" on ${commentedRepositories} pull ${pluralSingular}.`);
   } else {
     const approveResult = await autoApprover.approveByMatch(new RegExp(pullRequestSlug), repositories);
@@ -70,7 +70,7 @@ async function runAction(
       (count, repository) => count + repository.actionResults.length,
       0
     );
-    const pluralSingular = getPlural('request', approvedRepositories);
+    const pluralSingular = pluralize('request', approvedRepositories);
     logger.info(`Approved ${approvedRepositories} pull ${pluralSingular}.`);
   }
 }
@@ -102,7 +102,7 @@ void (async () => {
 
     if (!!allRepositories.length) {
       const repositories = allRepositories.map(repository => {
-        const prText = getPlural('PR', repository.pullRequests.length);
+        const prText = pluralize('PR', repository.pullRequests.length);
         return `${repository.repositorySlug} (${repository.pullRequests.length} open ${prText})`;
       });
 

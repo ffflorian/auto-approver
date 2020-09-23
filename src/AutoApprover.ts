@@ -23,7 +23,7 @@ interface GitHubPullRequest {
 export interface ActionResult {
   error?: string;
   pullNumber: number;
-  status: 'bad' | 'ok';
+  status: 'bad' | 'good';
 }
 
 export interface ApproverConfig {
@@ -136,7 +136,7 @@ export class AutoApprover {
   }
 
   async approveByPullNumber(repositorySlug: string, pullNumber: number): Promise<ActionResult> {
-    const actionResult: ActionResult = {pullNumber, status: 'ok'};
+    const actionResult: ActionResult = {pullNumber, status: 'good'};
 
     try {
       if (!this.config.dryRun) {
@@ -151,7 +151,7 @@ export class AutoApprover {
   }
 
   async commentOnPullRequest(repositorySlug: string, pullNumber: number, comment: string): Promise<ActionResult> {
-    const actionResult: ActionResult = {pullNumber, status: 'ok'};
+    const actionResult: ActionResult = {pullNumber, status: 'good'};
 
     try {
       if (!this.config.dryRun) {
