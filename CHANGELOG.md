@@ -1,3 +1,10 @@
+## [1.6.2](https://github.com/ffflorian/auto-approver/compare/v1.6.1...v1.6.2) (2020-09-23)
+
+
+### Bug Fixes
+
+* Repository RegEx, better filtering, add tests ([a4d87ed](https://github.com/ffflorian/auto-approver/commit/a4d87ed4ec86c4a96ac2c47fbd449a46cc7326d0))
+
 ## [1.6.1](https://github.com/ffflorian/auto-approver/compare/v1.6.0...v1.6.1) (2020-09-18)
 
 
