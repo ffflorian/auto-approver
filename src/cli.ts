@@ -54,7 +54,7 @@ async function runAction(
 ): Promise<void> {
   if (configFileData.useComment) {
     const commentResult = await autoApprover.commentByMatch(
-      new RegExp(`${pullRequestSlug}/gi`),
+      new RegExp(pullRequestSlug, 'gi'),
       configFileData.useComment,
       repositories
     );
@@ -65,7 +65,7 @@ async function runAction(
     const pluralSingular = pluralize('request', commentedRepositories);
     logger.info(`Commented "${configFileData.useComment}" on ${commentedRepositories} pull ${pluralSingular}.`);
   } else {
-    const approveResult = await autoApprover.approveByMatch(new RegExp(`${pullRequestSlug}/gi`), repositories);
+    const approveResult = await autoApprover.approveByMatch(new RegExp(pullRequestSlug, 'gi'), repositories);
     const approvedRepositories = approveResult.reduce(
       (count, repository) => count + repository.actionResults.length,
       0
