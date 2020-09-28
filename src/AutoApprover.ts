@@ -119,10 +119,17 @@ export class AutoApprover {
   }
 
   private getMatchingRepositories(repositories: Repository[], regex: RegExp): Repository[] {
-    return repositories.filter(repository => {
-      const matchingRepositories = repository.pullRequests.filter(pullRequest => !!pullRequest.head.ref.match(regex));
-      return !!matchingRepositories.length;
-    });
+    return repositories
+      .map(repository => {
+        const matchingPullRequests = repository.pullRequests.filter(pullRequest =>
+          new RegExp(regex).test(pullRequest.head.ref)
+        );
+        if (!!matchingPullRequests.length) {
+          return {pullRequests: matchingPullRequests, repositorySlug: repository.repositorySlug};
+        }
+        return undefined;
+      })
+      .filter(Boolean) as Repository[];
   }
 
   async commentByMatch(regex: RegExp, comment: string, repositories?: Repository[]): Promise<RepositoryResult[]> {

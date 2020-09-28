@@ -83,19 +83,19 @@ describe('AutoApprover', () => {
     describe('getMatchingRepositories', () => {
       it('matches repositories', () => {
         const expectedESLint = [repositories[0]];
-        const actualESLint = autoApprover['getMatchingRepositories'](repositories, /eslint/g);
+        const actualESLint = autoApprover['getMatchingRepositories'](repositories, /eslint/gi);
         expect(actualESLint).toEqual(expectedESLint);
 
         const expectedTypeScript = [repositories[1]];
-        const actualTypeScript = autoApprover['getMatchingRepositories'](repositories, /typescript-4.0.3/g);
+        const actualTypeScript = autoApprover['getMatchingRepositories'](repositories, /typescript-4.0.3/gi);
         expect(actualTypeScript).toEqual(expectedTypeScript);
 
         const expectedAll = repositories;
-        const actualAll = autoApprover['getMatchingRepositories'](repositories, /typescript/g);
+        const actualAll = autoApprover['getMatchingRepositories'](repositories, /typescript/gi);
         expect(actualAll).toEqual(expectedAll);
 
         const expectedNone: Repository[] = [];
-        const actualNone = autoApprover['getMatchingRepositories'](repositories, /no-match/g);
+        const actualNone = autoApprover['getMatchingRepositories'](repositories, /no-match/gi);
         expect(actualNone).toEqual(expectedNone);
       });
     });
@@ -105,7 +105,7 @@ describe('AutoApprover', () => {
         spyOn<any>(autoApprover, 'postComment').and.callThrough();
         const comment = '@dependabot squash and merge';
 
-        await autoApprover.commentByMatch(/eslint/, comment, repositories);
+        await autoApprover.commentByMatch(/eslint/gi, comment, repositories);
         const expectedRepositoryESLint = repositories[0];
         expect(autoApprover['postComment']).toHaveBeenCalledWith(
           expectedRepositoryESLint.repositorySlug,
@@ -113,7 +113,7 @@ describe('AutoApprover', () => {
           comment
         );
 
-        await autoApprover.commentByMatch(/typescript-4.0.3/, comment, repositories);
+        await autoApprover.commentByMatch(/typescript-4.0.3/gi, comment, repositories);
         const expectedRepositoryTypescript = repositories[1];
         expect(autoApprover['postComment']).toHaveBeenCalledWith(
           expectedRepositoryTypescript.repositorySlug,
