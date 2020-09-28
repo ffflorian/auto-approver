@@ -1,3 +1,10 @@
+## [1.6.3](https://github.com/ffflorian/auto-approver/compare/v1.6.2...v1.6.3) (2020-09-28)
+
+
+### Bug Fixes
+
+* Filter pull requests instead of projects ([fcbe4be](https://github.com/ffflorian/auto-approver/commit/fcbe4beddb351921824138891d12da3474efb99d))
+
 ## [1.6.2](https://github.com/ffflorian/auto-approver/compare/v1.6.1...v1.6.2) (2020-09-23)
 
 
