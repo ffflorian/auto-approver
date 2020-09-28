@@ -90,7 +90,11 @@ async function askAction(autoApprover: AutoApprover, repositories: Repository[],
 async function actionLoop(autoApprover: AutoApprover, repositories: Repository[], doAction: string): Promise<void> {
   const answer = await askQuestion(`ℹ️  auto-approver Would you like to ${doAction} another PR (Y/n)? `);
   if (!/n(o)?$/i.test(answer)) {
-    await askAction(autoApprover, repositories, doAction);
+    if (!/y(es)?$/i.test(answer)) {
+      await actionLoop(autoApprover, repositories, doAction);
+    } else {
+      await askAction(autoApprover, repositories, doAction);
+    }
   }
 }
 
