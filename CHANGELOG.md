@@ -1,3 +1,12 @@
+## [1.6.4](https://github.com/ffflorian/auto-approver/compare/v1.6.3...v1.6.4) (2020-09-28)
+
+
+### Bug Fixes
+
+* Allow only yes and no in CLI ([03d575f](https://github.com/ffflorian/auto-approver/commit/03d575f2e9b9439dd81205a27df08f7a52b24ec0))
+* Don't crash if repository name is invalid ([09c08ec](https://github.com/ffflorian/auto-approver/commit/09c08ec4fdc47bdd4f1f492992274f73b1c9a7fa))
+* RegEx in CLI ([2d1da5e](https://github.com/ffflorian/auto-approver/commit/2d1da5e34a4b39ced981535f0d56c2dbe446e1db))
+
 ## [1.6.3](https://github.com/ffflorian/auto-approver/compare/v1.6.2...v1.6.3) (2020-09-28)
 
 
