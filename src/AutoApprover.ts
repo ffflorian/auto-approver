@@ -183,11 +183,16 @@ export class AutoApprover {
     );
 
     const repositoriesPromises = repositorySlugs.map(async repositorySlug => {
-      const pullRequests = await this.getPullRequestsBySlug(repositorySlug);
-      return {pullRequests, repositorySlug};
+      try {
+        const pullRequests = await this.getPullRequestsBySlug(repositorySlug);
+        return {pullRequests, repositorySlug};
+      } catch (error) {
+        this.logger.error(`Could not get pull requests for "${repositorySlug}": ${error.message}`);
+        return undefined;
+      }
     });
 
-    return Promise.all(repositoriesPromises);
+    return (await Promise.all(repositoriesPromises)).filter(Boolean) as Repository[];
   }
 
   async getRepositoriesWithOpenPullRequests(): Promise<Repository[]> {
