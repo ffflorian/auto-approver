@@ -1,3 +1,10 @@
+## [1.6.5](https://github.com/ffflorian/auto-approver/compare/v1.6.4...v1.6.5) (2020-10-30)
+
+
+### Bug Fixes
+
+* Log error messages instead of complete error ([710f028](https://github.com/ffflorian/auto-approver/commit/710f0283e37d80681c58800520fae3bbfedcc84e))
+
 ## [1.6.4](https://github.com/ffflorian/auto-approver/compare/v1.6.3...v1.6.4) (2020-09-28)
 
 
