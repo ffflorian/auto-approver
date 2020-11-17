@@ -11,6 +11,7 @@ describe('AutoApprover', () => {
       {
         pullRequests: [
           {
+            draft: false,
             head: {
               ref: 'dependabot/npm_and_yarn/eslint-plugin-typescript-sort-keys-1.5.0',
               sha: 'cd3ae10104a2ed9d937869b892457003ad68df74',
@@ -24,6 +25,7 @@ describe('AutoApprover', () => {
       {
         pullRequests: [
           {
+            draft: false,
             head: {
               ref: 'dependabot/npm_and_yarn/typescript-4.0.3',
               sha: 'e59a374b357763fab5d3e61b0fdab66f4746b097',

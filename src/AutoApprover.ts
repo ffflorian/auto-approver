@@ -13,6 +13,7 @@ const toolName = Object.keys(bin)[0];
 
 /** @see https://docs.github.com/en/rest/reference/pulls#get-a-pull-request */
 interface GitHubPullRequest {
+  draft: boolean;
   head: {
     /** The branch name */
     ref: string;
@@ -36,6 +37,8 @@ export interface ApproverConfig {
   authToken: string;
   /** Don't send any data */
   dryRun?: boolean;
+  /** Include draft PRs */
+  keepDrafts?: boolean;
   /** All projects to include */
   projects: {
     /** All projects hosted on GitHub in the format `user/repo` */
@@ -216,6 +219,9 @@ export class AutoApprover {
     const resourceUrl = `/repos/${repositorySlug}/pulls`;
     const params = {state: 'open'};
     const response = await this.apiClient.get<GitHubPullRequest[]>(resourceUrl, {params});
+    if (!this.config.keepDrafts) {
+      response.data = response.data.filter(pr => !pr.draft);
+    }
     return response.data;
   }
 }

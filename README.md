@@ -34,6 +34,8 @@ The structure of the configuration file is the following:
   authToken: string;
   /** Don't send any data */
   dryRun?: boolean;
+  /** Include draft PRs */
+  keepDrafts?: boolean;
   /** All projects to include */
   projects: {
     /** All projects hosted on GitHub in the format `user/repo` */
