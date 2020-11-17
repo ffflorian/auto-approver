@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/ffflorian/auto-approver/compare/v1.6.5...v1.7.0) (2020-11-17)
+
+
+### Features
+
+* Remove action loop ([aca118c](https://github.com/ffflorian/auto-approver/commit/aca118cdc69be146c3cf826838ea21bbf95f45c8))
+
 ## [1.6.5](https://github.com/ffflorian/auto-approver/compare/v1.6.4...v1.6.5) (2020-10-30)
 
 
