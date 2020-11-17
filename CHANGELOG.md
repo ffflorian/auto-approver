@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/ffflorian/auto-approver/compare/v1.7.0...v1.8.0) (2020-11-17)
+
+
+### Features
+
+* Remove draft PRs from selection ([dd7a64f](https://github.com/ffflorian/auto-approver/commit/dd7a64f588c3b8d6c6a9da3ff3ea1f17ddd1e9d3))
+
 # [1.7.0](https://github.com/ffflorian/auto-approver/compare/v1.6.5...v1.7.0) (2020-11-17)
 
 
