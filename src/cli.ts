@@ -84,18 +84,7 @@ function askQuestion(question: string): Promise<string> {
 async function askAction(autoApprover: AutoApprover, repositories: Repository[], doAction: string): Promise<void> {
   const answer = await askQuestion(`ℹ️  auto-approver Which PR would you like to ${doAction} (enter a branch name)? `);
   await runAction(autoApprover, repositories, answer);
-  await actionLoop(autoApprover, repositories, doAction);
-}
-
-async function actionLoop(autoApprover: AutoApprover, repositories: Repository[], doAction: string): Promise<void> {
-  const answer = await askQuestion(`ℹ️  auto-approver Would you like to ${doAction} another PR (Y/n)? `);
-  if (!/n(o)?$/i.test(answer)) {
-    if (!/y(es)?$/i.test(answer)) {
-      await actionLoop(autoApprover, repositories, doAction);
-    } else {
-      await askAction(autoApprover, repositories, doAction);
-    }
-  }
+  await askAction(autoApprover, repositories, doAction);
 }
 
 void (async () => {
