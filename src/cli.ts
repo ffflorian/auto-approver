@@ -33,8 +33,9 @@ commander
   .version(version)
   .parse(process.argv);
 
+const commanderOptions = commander.opts();
 const configExplorer = cosmiconfigSync('approver');
-const configResult = commander.config ? configExplorer.load(commander.config) : configExplorer.search();
+const configResult = commanderOptions.config ? configExplorer.load(commanderOptions.config) : configExplorer.search();
 
 if (!configResult || configResult.isEmpty) {
   logger.error('No valid configuration file found.');
@@ -43,8 +44,8 @@ if (!configResult || configResult.isEmpty) {
 
 const configFileData: ApproverConfig = {
   ...configResult.config,
-  ...(commander.message && {useComment: commander.message}),
-  ...(commander.dryRun && {dryRun: commander.dryRun}),
+  ...(commanderOptions.message && {useComment: commanderOptions.message}),
+  ...(commanderOptions.dryRun && {dryRun: commanderOptions.dryRun}),
 };
 
 async function runAction(
