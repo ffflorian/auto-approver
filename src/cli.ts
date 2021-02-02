@@ -53,27 +53,18 @@ async function runAction(
   repositories: Repository[],
   pullRequestSlug: string
 ): Promise<void> {
-  if (configFileData.useComment) {
-    const commentResult = await autoApprover.commentByMatch(
-      new RegExp(pullRequestSlug, 'gi'),
-      configFileData.useComment,
-      repositories
-    );
-    const commentedRepositories = commentResult.reduce(
-      (count, repository) => count + repository.actionResults.length,
-      0
-    );
-    const pluralSingular = pluralize('request', commentedRepositories);
-    logger.info(`Commented "${configFileData.useComment}" on ${commentedRepositories} pull ${pluralSingular}.`);
-  } else {
-    const approveResult = await autoApprover.approveByMatch(new RegExp(pullRequestSlug, 'gi'), repositories);
-    const approvedRepositories = approveResult.reduce(
-      (count, repository) => count + repository.actionResults.length,
-      0
-    );
-    const pluralSingular = pluralize('request', approvedRepositories);
-    logger.info(`Approved ${approvedRepositories} pull ${pluralSingular}.`);
-  }
+  const regex = new RegExp(pullRequestSlug, 'gi');
+  const action = configFileData.useComment ? 'Commented on' : 'Approved';
+  const actionResult = configFileData.useComment
+    ? await autoApprover.commentByMatch(regex, configFileData.useComment, repositories)
+    : await autoApprover.approveByMatch(regex, repositories);
+
+  const actedRepositories = actionResult.reduce((count, repository) => {
+    return count + repository.actionResults.length;
+  }, 0);
+
+  const prPluralized = pluralize('PR', actedRepositories);
+  logger.info(`${action} ${actedRepositories} ${prPluralized} matching "${regex}".`);
 }
 
 function askQuestion(question: string): Promise<string> {
@@ -95,10 +86,12 @@ void (async () => {
     const allRepositories = await autoApprover.getRepositoriesWithOpenPullRequests();
 
     if (!!allRepositories.length) {
-      const repositories = allRepositories.map(repository => {
-        const prText = pluralize('PR', repository.pullRequests.length);
-        return `${repository.repositorySlug} (${repository.pullRequests.length} open ${prText})`;
-      });
+      const repositories = allRepositories
+        .sort((repositoryA, repositoryB) => repositoryB.pullRequests.length - repositoryA.pullRequests.length)
+        .map(repository => {
+          const prPluralized = pluralize('PR', repository.pullRequests.length);
+          return `${repository.repositorySlug} (${repository.pullRequests.length} open ${prPluralized})`;
+        });
 
       logger.info('Found the following repositories to check:', repositories);
 
