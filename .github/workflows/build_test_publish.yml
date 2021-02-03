@@ -50,8 +50,8 @@ jobs:
 
       - name: Release on npm
         if: |
-          env.BRANCH_NAME == 'main' &&
-          env.CI_SKIP == 'false'
+          env.CI_SKIP == 'false' &&
+          github.event_name != 'pull_request'
         env:
           GIT_AUTHOR_NAME: ffflobot
           GIT_AUTHOR_EMAIL: ffflobot@users.noreply.github.com
@@ -67,8 +67,8 @@ jobs:
 
       - name: Release on GitHub
         if: |
-          env.BRANCH_NAME == 'main' &&
-          env.CI_SKIP == 'false'
+          env.CI_SKIP == 'false' &&
+          github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: |
