@@ -5,7 +5,7 @@
   },
   "dependencies": {
     "axios": "0.21.1",
-    "commander": "7.0.0",
+    "commander": "7.1.0",
     "cosmiconfig": "7.0.0",
     "logdown": "3.3.1"
   },
