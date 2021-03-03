@@ -85,6 +85,7 @@
     "lint:ts": "eslint --ignore-path .gitignore --ext .ts src/",
     "lint:ts:spec": "eslint --ignore-path .gitignore --ext .ts --config .eslintrc.spec.json spec/",
     "postversion": "node ../node_modules/publish-flat/cli-copy.js -i package.json -o ../package.json version",
+    "prepare": "husky install",
     "prettier": "prettier \"*.{json,md,yml}\"",
     "release": "semantic-release",
     "start": "ts-node src/cli.ts",
