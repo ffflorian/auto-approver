@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import * as commander from 'commander';
+import {program as commander} from 'commander';
 import {cosmiconfigSync} from 'cosmiconfig';
 import * as fs from 'fs';
 import * as logdown from 'logdown';
