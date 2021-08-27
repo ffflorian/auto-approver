@@ -158,7 +158,9 @@ export class AutoApprover {
         await this.postReview(repositorySlug, pullNumber);
       }
     } catch (error) {
-      this.logger.error(`Could not approve request #${pullNumber} in "${repositorySlug}": ${(error as AxiosError).message}`);
+      this.logger.error(
+        `Could not approve request #${pullNumber} in "${repositorySlug}": ${(error as AxiosError).message}`
+      );
       actionResult.status = 'bad';
       actionResult.error = error.toString();
     }
@@ -173,7 +175,9 @@ export class AutoApprover {
         await this.postComment(repositorySlug, pullNumber, comment);
       }
     } catch (error) {
-      this.logger.error(`Could not comment on pull request #${pullNumber} in "${repositorySlug}": ${(error as AxiosError).message}`);
+      this.logger.error(
+        `Could not comment on pull request #${pullNumber} in "${repositorySlug}": ${(error as AxiosError).message}`
+      );
       actionResult.status = 'bad';
       actionResult.error = error.toString();
     }
