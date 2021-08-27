@@ -162,7 +162,7 @@ export class AutoApprover {
         `Could not approve request #${pullNumber} in "${repositorySlug}": ${(error as AxiosError).message}`
       );
       actionResult.status = 'bad';
-      actionResult.error = error.toString();
+      actionResult.error = (error as AxiosError).toString();
     }
     return actionResult;
   }
@@ -179,7 +179,7 @@ export class AutoApprover {
         `Could not comment on pull request #${pullNumber} in "${repositorySlug}": ${(error as AxiosError).message}`
       );
       actionResult.status = 'bad';
-      actionResult.error = error.toString();
+      actionResult.error = (error as AxiosError).toString();
     }
     return actionResult;
   }
