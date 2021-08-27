@@ -1,4 +1,4 @@
-import axios, {AxiosInstance} from 'axios';
+import axios, {AxiosError, AxiosInstance} from 'axios';
 import * as fs from 'fs';
 import * as logdown from 'logdown';
 import * as path from 'path';
@@ -158,7 +158,7 @@ export class AutoApprover {
         await this.postReview(repositorySlug, pullNumber);
       }
     } catch (error) {
-      this.logger.error(`Could not approve request #${pullNumber} in "${repositorySlug}": ${error.message}`);
+      this.logger.error(`Could not approve request #${pullNumber} in "${repositorySlug}": ${(error as AxiosError).message}`);
       actionResult.status = 'bad';
       actionResult.error = error.toString();
     }
@@ -173,7 +173,7 @@ export class AutoApprover {
         await this.postComment(repositorySlug, pullNumber, comment);
       }
     } catch (error) {
-      this.logger.error(`Could not comment on pull request #${pullNumber} in "${repositorySlug}": ${error.message}`);
+      this.logger.error(`Could not comment on pull request #${pullNumber} in "${repositorySlug}": ${(error as AxiosError).message}`);
       actionResult.status = 'bad';
       actionResult.error = error.toString();
     }
@@ -190,7 +190,7 @@ export class AutoApprover {
         const pullRequests = await this.getPullRequestsBySlug(repositorySlug);
         return {pullRequests, repositorySlug};
       } catch (error) {
-        this.logger.error(`Could not get pull requests for "${repositorySlug}": ${error.message}`);
+        this.logger.error(`Could not get pull requests for "${repositorySlug}": ${(error as AxiosError).message}`);
         return undefined;
       }
     });
