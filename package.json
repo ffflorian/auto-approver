@@ -6,7 +6,7 @@
   "dependencies": {
     "axios": "0.27.2",
     "commander": "9.4.1",
-    "cosmiconfig": "7.0.1",
+    "cosmiconfig": "7.1.0",
     "logdown": "3.3.1"
   },
   "description": "Automatically approve all GitHub PRs which match a specific pattern.",
